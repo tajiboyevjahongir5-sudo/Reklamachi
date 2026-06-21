@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id // Telegram ID
+  username  String?
+  firstName String?
+  createdAt DateTime @default(now())
+  
+  payments  Payment[]
+  adTasks   AdTask[]
+}
+
+model Channel {
+  id          String   @id // Telegram Channel ID
+  title       String
+  description String?
+  adPrice     Float
+  membersCount Int     @default(0)
+  inviteLink  String?
+  createdAt   DateTime @default(now())
+  
+  payments    Payment[]
+  adTasks     AdTask[]
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  amount    Float
+  status    String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  adTasks   AdTask[]
+}
+
+model AdTask {
+  id                 Int      @id @default(autoincrement())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+  channelId          String
+  channel            Channel  @relation(fields: [channelId], references: [id])
+  paymentId          Int?
+  payment            Payment? @relation(fields: [paymentId], references: [id])
+  
+  status             String   @default("WAITING_CONTENT") // WAITING_CONTENT, POSTED, DELETED
+  
+  messageIdInChannel Int?     // Message ID returned by Telegram when posted to the channel
+  
+  postedAt           DateTime?
+  deleteAt           DateTime?
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Settings {
+  id                 Int      @id @default(1)
+  cardNumber         String   @default("")
+  paymentChannelId   String   @default("") // Channel ID where bank notifications are forwarded
+}
