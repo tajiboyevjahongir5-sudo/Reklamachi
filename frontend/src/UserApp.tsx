@@ -4,8 +4,6 @@ import { Send, Users, CheckCircle2 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// Get initData from Telegram Web App
-const _initData = (window as any).Telegram?.WebApp?.initData || '';
 const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
 const MOCK_USER_ID = '123456789'; // For local testing
 const userId = tgUser?.id || MOCK_USER_ID;
