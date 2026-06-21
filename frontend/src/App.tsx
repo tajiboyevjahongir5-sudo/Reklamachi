@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useSearchParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import UserApp from './UserApp';
 import AdminApp from './AdminApp';
 
