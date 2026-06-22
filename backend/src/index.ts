@@ -10,8 +10,8 @@ async function bootstrap() {
   startCronJobs();
 
   // Start express server
-  app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+  app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`Server listening on port ${PORT} (0.0.0.0)`);
   });
 
   // Start bot
