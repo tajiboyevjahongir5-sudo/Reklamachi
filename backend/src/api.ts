@@ -115,7 +115,26 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
       _sum: { amount: true }
     });
     const activeAds = await prisma.adTask.count({ where: { status: 'POSTED' } });
-    res.json({ totalUsers, revenue: totalRevenueObj._sum.amount || 0, activeAds });
+    
+    // Group payments by channel
+    const channels = await prisma.channel.findMany();
+    const channelStats = await Promise.all(channels.map(async (ch) => {
+      const rev = await prisma.payment.aggregate({
+        where: { channelId: ch.id, status: 'COMPLETED' },
+        _sum: { amount: true }
+      });
+      const active = await prisma.adTask.count({
+        where: { channelId: ch.id, status: 'POSTED' }
+      });
+      return {
+        id: ch.id,
+        title: ch.title,
+        revenue: rev._sum.amount || 0,
+        activeAds: active
+      };
+    }));
+
+    res.json({ totalUsers, revenue: totalRevenueObj._sum.amount || 0, activeAds, channelStats });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -123,10 +142,10 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 
 // CRUD Channels
 app.post('/api/admin/channels', requireAdmin, async (req, res) => {
-  const { id, title, description, adPrice, membersCount } = req.body;
+  const { id, title, description, adPrice, membersCount, dailyViews } = req.body;
   try {
     const channel = await prisma.channel.create({
-      data: { id, title, description, adPrice: Number(adPrice), membersCount: Number(membersCount) }
+      data: { id, title, description, adPrice: Number(adPrice), membersCount: Number(membersCount), dailyViews: Number(dailyViews || 0) }
     });
     res.json(channel);
   } catch (err) {
@@ -148,12 +167,12 @@ app.delete('/api/admin/channels/:id', requireAdmin, async (req, res) => {
 
 // Update Settings
 app.post('/api/admin/settings', requireAdmin, async (req, res) => {
-  const { cardNumber, paymentChannelId } = req.body;
+  const { cardNumber, cardOwnerName, paymentChannelId } = req.body;
   try {
     const settings = await prisma.settings.upsert({
       where: { id: 1 },
-      update: { cardNumber, paymentChannelId },
-      create: { id: 1, cardNumber, paymentChannelId }
+      update: { cardNumber, cardOwnerName, paymentChannelId },
+      create: { id: 1, cardNumber, cardOwnerName, paymentChannelId }
     });
     res.json(settings);
   } catch (err) {
@@ -171,6 +190,18 @@ app.get('/api/admin/settings', requireAdmin, async (req, res) => {
     res.json(settings);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get Users
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get users' });
   }
 });
 

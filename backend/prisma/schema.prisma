@@ -11,6 +11,7 @@ model User {
   id        String   @id // Telegram ID
   username  String?
   firstName String?
+  phoneNumber String?
   createdAt DateTime @default(now())
   
   payments  Payment[]
@@ -23,6 +24,7 @@ model Channel {
   description String?
   adPrice     Float
   membersCount Int     @default(0)
+  dailyViews  Int      @default(0)
   inviteLink  String?
   createdAt   DateTime @default(now())
   
@@ -67,5 +69,6 @@ model AdTask {
 model Settings {
   id                 Int      @id @default(1)
   cardNumber         String   @default("")
+  cardOwnerName      String   @default("")
   paymentChannelId   String   @default("") // Channel ID where bank notifications are forwarded
 }

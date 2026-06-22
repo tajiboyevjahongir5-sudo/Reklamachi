@@ -16,24 +16,27 @@ export default function AdminApp() {
   const [channels, setChannels] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
   const [ads, setAds] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Form states
-  const [newChannel, setNewChannel] = useState({ id: '', title: '', description: '', adPrice: '', membersCount: '' });
+  const [newChannel, setNewChannel] = useState({ id: '', title: '', description: '', adPrice: '', membersCount: '', dailyViews: '' });
 
   const fetchAdminData = async () => {
     try {
       const headers = { 'x-telegram-init-data': initData };
-      const [statsRes, channelsRes, settingsRes, adsRes] = await Promise.all([
+      const [statsRes, channelsRes, settingsRes, adsRes, usersRes] = await Promise.all([
         axios.get(`${API_URL}/api/admin/stats`, { headers }),
         axios.get(`${API_URL}/api/channels`, { headers }),
         axios.get(`${API_URL}/api/admin/settings`, { headers }),
-        axios.get(`${API_URL}/api/admin/ads`, { headers }).catch(() => ({ data: [] }))
+        axios.get(`${API_URL}/api/admin/ads`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/api/admin/users`, { headers }).catch(() => ({ data: [] }))
       ]);
       setStats(statsRes.data);
       setChannels(channelsRes.data);
       setSettings(settingsRes.data);
       setAds(adsRes.data);
+      setUsers(usersRes.data);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -50,7 +53,7 @@ export default function AdminApp() {
     e.preventDefault();
     try {
       await axios.post(`${API_URL}/api/admin/channels`, newChannel, { headers: { 'x-telegram-init-data': initData } });
-      setNewChannel({ id: '', title: '', description: '', adPrice: '', membersCount: '' });
+      setNewChannel({ id: '', title: '', description: '', adPrice: '', membersCount: '', dailyViews: '' });
       fetchAdminData();
     } catch (err) {
       alert('Xatolik');
@@ -175,6 +178,13 @@ export default function AdminApp() {
                 onChange={e => setSettings({...settings, cardNumber: e.target.value})} 
                 placeholder="8600 1234 5678 9012"
               />
+
+              <label style={{ display: 'block', marginBottom: 8, fontSize: 13, color: 'var(--text-muted)' }}>Karta Egasi (Ism Familiya)</label>
+              <input 
+                value={settings.cardOwnerName || ''} 
+                onChange={e => setSettings({...settings, cardOwnerName: e.target.value})} 
+                placeholder="Palonchiyev Pistonchi"
+              />
               
               <label style={{ display: 'block', marginBottom: 8, fontSize: 13, color: 'var(--text-muted)' }}>To'lov Bildirishnomasi Kanal ID</label>
               <input 
@@ -201,6 +211,8 @@ export default function AdminApp() {
                   <input required type="number" placeholder="Reklama Narxi (UZS)" value={newChannel.adPrice} onChange={e => setNewChannel({...newChannel, adPrice: e.target.value})} />
                   <input required type="number" placeholder="Obunachilar soni" value={newChannel.membersCount} onChange={e => setNewChannel({...newChannel, membersCount: e.target.value})} />
                 </div>
+                <input required type="number" placeholder="1 kunlik post ko'rilish soni (View)" value={newChannel.dailyViews} onChange={e => setNewChannel({...newChannel, dailyViews: e.target.value})} />
+                
                 <button className="btn btn-neon" type="submit" style={{ marginTop: 10 }}><Plus size={18} /> Qo'shish</button>
               </form>
             </div>
@@ -212,6 +224,7 @@ export default function AdminApp() {
                   <div>
                     <h3 style={{ fontSize: 16 }}>{ch.title}</h3>
                     <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--text-muted)' }}>ID: {ch.id}</p>
+                    <p style={{ margin: '0 0 4px', fontSize: 13, color: 'var(--text-muted)' }}>O'rtacha View: {ch.dailyViews || 0}</p>
                     <p style={{ margin: 0, color: 'var(--neon-orange)', fontWeight: 600 }}>{ch.adPrice.toLocaleString()} UZS</p>
                   </div>
                   <button 
@@ -229,11 +242,45 @@ export default function AdminApp() {
         {/* FOYDALANUVCHILAR TAB */}
         {activeTab === 'foydalanuvchilar' && (
           <div>
-            <div className="section-title">Foydalanuvchilar</div>
-            <div className="inner-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-              <Users size={48} color="var(--neon-cyan)" style={{ marginBottom: 16 }} />
-              <h2 style={{ fontSize: 36, margin: 0 }}>{stats.totalUsers || 0}</h2>
-              <p style={{ color: 'var(--text-muted)' }}>Botdan ro'yxatdan o'tgan barcha foydalanuvchilar soni</p>
+            <div className="section-title">
+              A'zolar Ro'yxati <span style={{ fontSize: 14, color: 'var(--neon-cyan)' }}>{users.length} ta</span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {users.map((u: any) => (
+                <div key={u.id} className="inner-card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
+                  <div style={{ 
+                    width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
+                    background: 'linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta))', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                    fontSize: 20, fontWeight: 'bold', color: 'white',
+                    boxShadow: '0 0 10px rgba(0, 243, 255, 0.3)'
+                  }}>
+                    {(u.firstName || u.username || 'U')[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h4 style={{ margin: 0, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {u.firstName || 'User'}
+                    </h4>
+                    <p style={{ margin: '2px 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                      {u.username ? `@${u.username}` : 'ID: ' + u.id}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+                      📞 {u.phoneNumber || 'Kiritilmagan'}
+                    </p>
+                  </div>
+                  <a 
+                    href={u.username ? `https://t.me/${u.username}` : `tg://user?id=${u.id}`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="btn btn-neon" 
+                    style={{ width: 'auto', padding: '8px 12px', fontSize: 12, borderRadius: 8, flexShrink: 0 }}
+                  >
+                    Profil
+                  </a>
+                </div>
+              ))}
+              {users.length === 0 && <p style={{ textAlign: 'center' }}>Hali foydalanuvchilar yo'q</p>}
             </div>
           </div>
         )}
@@ -242,24 +289,49 @@ export default function AdminApp() {
         {activeTab === 'statistika' && (
           <div>
             <div className="section-title">Umumiy Statistika</div>
-            <div className="inner-card" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ padding: 16, background: 'rgba(0, 243, 255, 0.1)', borderRadius: '50%' }}>
-                <CreditCard color="var(--neon-cyan)" size={32} />
+            <div className="grid">
+              <div className="inner-card" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ padding: 16, background: 'rgba(0, 243, 255, 0.1)', borderRadius: '50%' }}>
+                  <CreditCard color="var(--neon-cyan)" size={32} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>Umumiy Daromad</p>
+                  <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: 24 }}>{(stats.revenue || 0).toLocaleString()} UZS</h2>
+                </div>
               </div>
-              <div>
-                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>Umumiy Daromad</p>
-                <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: 24 }}>{(stats.revenue || 0).toLocaleString()} UZS</h2>
+              
+              <div className="inner-card" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ padding: 16, background: 'rgba(0, 255, 136, 0.1)', borderRadius: '50%' }}>
+                  <Send color="var(--neon-green)" size={32} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>Faol Reklamalar</p>
+                  <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: 24 }}>{stats.activeAds || 0} ta</h2>
+                </div>
               </div>
             </div>
-            
-            <div className="inner-card" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ padding: 16, background: 'rgba(0, 255, 136, 0.1)', borderRadius: '50%' }}>
-                <Send color="var(--neon-green)" size={32} />
-              </div>
-              <div>
-                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>Faol Reklamalar</p>
-                <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: 24 }}>{stats.activeAds || 0} ta</h2>
-              </div>
+
+            <div className="section-title" style={{ marginTop: 20 }}>Kanal Statistikasi</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {stats.channelStats?.map((ch: any) => (
+                <div key={ch.id} className="inner-card" style={{ position: 'relative' }}>
+                  <h4 style={{ fontSize: 16, marginBottom: 8, color: 'var(--neon-cyan)' }}>{ch.title}</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>Kanal Daromadi:</p>
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 'bold' }}>{ch.revenue.toLocaleString()} UZS</p>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>Faol Reklamalar:</p>
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 'bold' }}>{ch.activeAds}</p>
+                  </div>
+                  <div style={{ position: 'absolute', right: -10, top: -10, opacity: 0.1, transform: 'scale(1.5)' }}>
+                    <BarChart2 size={64} />
+                  </div>
+                </div>
+              ))}
+              {(!stats.channelStats || stats.channelStats.length === 0) && (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Kanal ma'lumotlari yo'q</p>
+              )}
             </div>
           </div>
         )}
