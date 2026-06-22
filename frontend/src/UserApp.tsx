@@ -69,7 +69,9 @@ export default function UserApp() {
       setBuying(true);
       const res = await axios.post(`${API_URL}/api/create-payment`, {
         channelId: channel.id,
-        userId: userId
+        userId: userId,
+        username: tgUser?.username || '',
+        firstName: tgUser?.first_name || 'Foydalanuvchi'
       });
       setPaymentData(res.data.payment);
       setSelectedChannel(channel);

@@ -21,11 +21,18 @@ app.get('/api/channels', async (req, res) => {
 
 // Create payment
 app.post('/api/create-payment', async (req, res) => {
-  const { channelId, userId } = req.body;
+  const { channelId, userId, username, firstName } = req.body;
   
   try {
     const channel = await prisma.channel.findUnique({ where: { id: channelId } });
     if (!channel) return res.status(404).json({ error: "Kanal topilmadi" });
+
+    // Ensure user exists in DB (upsert) before creating payment
+    await prisma.user.upsert({
+      where: { id: String(userId) },
+      update: { username, firstName },
+      create: { id: String(userId), username, firstName }
+    });
 
     // Check if user has pending payment for this channel
     const existing = await prisma.payment.findFirst({
@@ -82,6 +89,7 @@ app.post('/api/create-payment', async (req, res) => {
     res.status(500).json({ error: "Failed to create payment" });
   }
 });
+
 
 // Get settings for public view
 app.get('/api/settings', async (req, res) => {
