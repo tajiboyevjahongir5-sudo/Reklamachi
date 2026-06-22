@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { prisma } from './prisma';
 import path from 'path';
+import { bot } from './bot';
 
 export const app = express();
 app.use(cors());
@@ -103,6 +104,207 @@ app.get('/api/settings', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// Create channel payment
+app.post('/api/create-channel-payment', async (req, res) => {
+  const { userId, username, firstName } = req.body;
+  try {
+    await prisma.user.upsert({
+      where: { id: String(userId) },
+      update: { username, firstName },
+      create: { id: String(userId), username, firstName }
+    });
+
+    const existing = await prisma.payment.findFirst({
+      where: { userId: String(userId), type: 'CHANNEL_ADD', status: 'PENDING' }
+    });
+
+    if (existing) {
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+      if (existing.createdAt < fifteenMinutesAgo) {
+        await prisma.payment.update({
+          where: { id: existing.id },
+          data: { status: 'CANCELLED' }
+        });
+      } else {
+        return res.json({ payment: existing });
+      }
+    }
+
+    const pendingPayments = await prisma.payment.findMany({
+      where: { status: 'PENDING' },
+      select: { amount: true }
+    });
+    const busyAmounts = new Set(pendingPayments.map(p => p.amount));
+
+    let randomSuffix = 0;
+    for (let attempts = 0; attempts < 100; attempts++) {
+      const testSuffix = Math.floor(Math.random() * 900) + 100;
+      const testAmount = 20000 + testSuffix;
+      if (!busyAmounts.has(testAmount)) {
+        randomSuffix = testSuffix;
+        break;
+      }
+    }
+    if (randomSuffix === 0) randomSuffix = Math.floor(Math.random() * 900) + 100;
+
+    const payment = await prisma.payment.create({
+      data: {
+        userId: String(userId),
+        amount: 20000 + randomSuffix,
+        type: 'CHANNEL_ADD',
+        status: 'PENDING'
+      }
+    });
+    res.json({ payment });
+  } catch (err) {
+    console.error("Payment Error:", err);
+    res.status(500).json({ error: "Failed to create channel payment" });
+  }
+});
+
+// Get user channels & balance
+app.get('/api/user/channels', async (req, res) => {
+  const userId = req.query.userId as string;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  try {
+    const channels = await prisma.channel.findMany({
+      where: { ownerId: userId }
+    });
+
+    const channelsWithRevenue = await Promise.all(channels.map(async ch => {
+      const rev = await prisma.payment.aggregate({
+        where: { channelId: ch.id, type: 'AD', status: 'COMPLETED' },
+        _sum: { amount: true }
+      });
+      return { ...ch, earned: (rev._sum.amount || 0) * 0.9 };
+    }));
+
+    const totalEarned = channelsWithRevenue.reduce((sum, ch) => sum + ch.earned, 0);
+
+    const withdrawals = await prisma.withdrawal.aggregate({
+      where: { userId, status: { in: ['PENDING', 'COMPLETED'] } },
+      _sum: { amount: true }
+    });
+    const totalWithdrawn = withdrawals._sum.amount || 0;
+    const balance = totalEarned - totalWithdrawn;
+
+    const unusedPayment = await prisma.payment.findFirst({
+      where: { userId, type: 'CHANNEL_ADD', status: 'COMPLETED' }
+    });
+
+    res.json({
+      channels: channelsWithRevenue,
+      balance,
+      hasUnusedPayment: !!unusedPayment
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Submit new channel
+app.post('/api/user/channels', async (req, res) => {
+  const { userId, id, title, description, category, adPrice, membersCount, dailyViews, inviteLink, cardNumber, cardOwnerName } = req.body;
+  try {
+    const unusedPayment = await prisma.payment.findFirst({
+      where: { userId: String(userId), type: 'CHANNEL_ADD', status: 'COMPLETED' },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    if (!unusedPayment) return res.status(403).json({ error: "Sizda tolov qilingan limit yoq" });
+
+    const existingChannel = await prisma.channel.findUnique({ where: { id } });
+    if (existingChannel) return res.status(400).json({ error: "Kanal ID allaqachon mavjud" });
+
+    const channel = await prisma.channel.create({
+      data: {
+        id, title, description, category: category || 'Boshqa',
+        adPrice: Number(adPrice), membersCount: Number(membersCount),
+        dailyViews: Number(dailyViews || 0), inviteLink,
+        ownerId: String(userId), cardNumber, cardOwnerName
+      }
+    });
+
+    await prisma.payment.update({
+      where: { id: unusedPayment.id },
+      data: { status: 'USED' }
+    });
+
+    res.json(channel);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to add channel' });
+  }
+});
+
+// Withdraw money
+app.post('/api/user/withdraw', async (req, res) => {
+  const { userId, amount } = req.body;
+  try {
+    const channels = await prisma.channel.findMany({ where: { ownerId: String(userId) } });
+    
+    let totalEarned = 0;
+    for (const ch of channels) {
+      const rev = await prisma.payment.aggregate({
+        where: { channelId: ch.id, type: 'AD', status: 'COMPLETED' },
+        _sum: { amount: true }
+      });
+      totalEarned += (rev._sum.amount || 0) * 0.9;
+    }
+
+    const withdrawals = await prisma.withdrawal.aggregate({
+      where: { userId: String(userId), status: { in: ['PENDING', 'COMPLETED'] } },
+      _sum: { amount: true }
+    });
+    const totalWithdrawn = withdrawals._sum.amount || 0;
+    const balance = totalEarned - totalWithdrawn;
+
+    const requestedAmount = Number(amount);
+    if (requestedAmount < 1000) return res.status(400).json({ error: "Minimal yechish summasi 1,000 UZS" });
+    if (requestedAmount > balance) return res.status(400).json({ error: "Hisobingizda yetarli mablag' yo'q" });
+
+    const firstChannel = channels[0];
+
+    const withdrawal = await prisma.withdrawal.create({
+      data: {
+        userId: String(userId),
+        amount: requestedAmount,
+        cardNumber: firstChannel?.cardNumber,
+        cardOwnerName: firstChannel?.cardOwnerName
+      }
+    });
+
+    const adminId = process.env.ADMIN_ID;
+    if (adminId) {
+      const user = await prisma.user.findUnique({ where: { id: String(userId) } });
+      bot.telegram.sendMessage(
+        adminId,
+        `💸 *Yangi pul yechish so'rovi!*\n\n` +
+        `Foydalanuvchi: ${user?.firstName || 'Mijoz'} (ID: ${userId})\n` +
+        `Summa: ${requestedAmount.toLocaleString()} UZS\n` +
+        `Karta: \`${withdrawal.cardNumber || 'Kiritilmagan'}\` (${withdrawal.cardOwnerName || 'Kiritilmagan'})`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: "✅ To'lov yuborildi", callback_data: `withdraw_approve_${withdrawal.id}` },
+              { text: "❌ Rad qilindi", callback_data: `withdraw_reject_${withdrawal.id}` }
+            ]]
+          }
+        }
+      ).catch(e => console.error(e));
+    }
+
+    res.json(withdrawal);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 
 
 // --- Admin Routes ---

@@ -16,6 +16,8 @@ model User {
   
   payments  Payment[]
   adTasks   AdTask[]
+  ownedChannels Channel[] @relation("ChannelOwner")
+  withdrawals Withdrawal[]
 }
 
 model Channel {
@@ -29,6 +31,11 @@ model Channel {
   inviteLink  String?
   createdAt   DateTime @default(now())
   
+  ownerId     String?
+  owner       User?    @relation("ChannelOwner", fields: [ownerId], references: [id])
+  cardNumber  String?
+  cardOwnerName String?
+
   payments    Payment[]
   adTasks     AdTask[]
 }
@@ -37,10 +44,11 @@ model Payment {
   id        Int      @id @default(autoincrement())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  channelId String
-  channel   Channel  @relation(fields: [channelId], references: [id])
+  channelId String?
+  channel   Channel?  @relation(fields: [channelId], references: [id])
   amount    Float
-  status    String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  status    String   @default("PENDING") // PENDING, COMPLETED, CANCELLED, USED
+  type      String   @default("AD") // AD, CHANNEL_ADD
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -75,4 +83,18 @@ model Settings {
   notifyNewPayment   Boolean  @default(true)
   notifyNewUser      Boolean  @default(true)
   notifyAdPosted     Boolean  @default(true)
+}
+
+model Withdrawal {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  status    String   @default("PENDING") // PENDING, COMPLETED, REJECTED
+  
+  cardNumber String?
+  cardOwnerName String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

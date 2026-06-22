@@ -121,29 +121,46 @@ bot.on('channel_post', async (ctx) => {
         data: { status: 'COMPLETED' }
       });
 
-      // Create an AdTask WAITING_CONTENT
-      await prisma.adTask.create({
-        data: {
-          userId: payment.userId,
-          channelId: payment.channelId,
-          paymentId: payment.id,
-          status: 'WAITING_CONTENT'
-        }
-      });
-
-      await bot.telegram.sendMessage(
-        payment.userId, 
-        `✅ To'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nIltimos, **${payment.channel.title}** kanaliga joylanishi kerak bo'lgan reklama xabarini (matn, rasm yoki video) menga yuboring.`,
-        { parse_mode: 'Markdown' }
-      );
-
-      const adminId = process.env.ADMIN_ID;
-      if (settings?.notifyNewPayment && adminId) {
-        bot.telegram.sendMessage(
-          adminId, 
-          `💰 *Yangi To'lov Tasdiqlandi!*\nKanal: ${payment.channel.title}\nSumma: ${payment.amount.toLocaleString()} UZS\nMijoz ID: ${payment.userId}`, 
+      if (payment.type === 'CHANNEL_ADD') {
+        await bot.telegram.sendMessage(
+          payment.userId, 
+          `✅ Kanal qo'shish uchun to'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nIltimos, Web App ga kirib kanalingiz ma'lumotlarini to'ldiring.`,
           { parse_mode: 'Markdown' }
-        ).catch(() => null);
+        );
+        
+        const adminId = process.env.ADMIN_ID;
+        if (settings?.notifyNewPayment && adminId) {
+          bot.telegram.sendMessage(
+            adminId, 
+            `💰 *Yangi Kanal Qo'shish To'lovi Tasdiqlandi!*\nSumma: ${payment.amount.toLocaleString()} UZS\nMijoz ID: ${payment.userId}`, 
+            { parse_mode: 'Markdown' }
+          ).catch(() => null);
+        }
+      } else {
+        // Create an AdTask WAITING_CONTENT
+        await prisma.adTask.create({
+          data: {
+            userId: payment.userId,
+            channelId: payment.channelId as string,
+            paymentId: payment.id,
+            status: 'WAITING_CONTENT'
+          }
+        });
+
+        await bot.telegram.sendMessage(
+          payment.userId, 
+          `✅ To'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nIltimos, **${payment.channel?.title}** kanaliga joylanishi kerak bo'lgan reklama xabarini (matn, rasm yoki video) menga yuboring.`,
+          { parse_mode: 'Markdown' }
+        );
+
+        const adminId = process.env.ADMIN_ID;
+        if (settings?.notifyNewPayment && adminId) {
+          bot.telegram.sendMessage(
+            adminId, 
+            `💰 *Yangi To'lov Tasdiqlandi!*\nKanal: ${payment.channel?.title}\nSumma: ${payment.amount.toLocaleString()} UZS\nMijoz ID: ${payment.userId}`, 
+            { parse_mode: 'Markdown' }
+          ).catch(() => null);
+        }
       }
     } catch (err) {
       console.error("Auto confirmation error for payment ID " + payment.id + ":", err);
@@ -204,5 +221,70 @@ bot.on('message', async (ctx) => {
     } else {
       await ctx.reply(`❌ Xatolik yuz berdi: ${err.message}`);
     }
+  }
+});
+
+// Withdraw Handlers
+bot.action(/withdraw_approve_(\d+)/, async (ctx) => {
+  try {
+    const withdrawalId = parseInt(ctx.match[1]);
+    const withdrawal = await prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
+    
+    if (!withdrawal) {
+      return ctx.answerCbQuery("So'rov topilmadi", { show_alert: true });
+    }
+    if (withdrawal.status !== 'PENDING') {
+      return ctx.answerCbQuery(`Allaqachon ${withdrawal.status}`, { show_alert: true });
+    }
+
+    await prisma.withdrawal.update({
+      where: { id: withdrawalId },
+      data: { status: 'COMPLETED' }
+    });
+
+    await ctx.answerCbQuery("To'lov tasdiqlandi!");
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => null);
+    await ctx.reply(`✅ So'rov ID: ${withdrawalId} tasdiqlandi.`);
+
+    await bot.telegram.sendMessage(
+      withdrawal.userId,
+      `✅ Hisobingiz (${withdrawal.amount.toLocaleString()} UZS) ko'rsatilgan karta raqamiga o'tkazib berildi.\n\nDaromadingiz bardavom bo'lsin, bizning telegram botimizni tanlaganingiz uchun rahmat! 🌟`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (err) {
+    console.error(err);
+    ctx.answerCbQuery("Xatolik yuz berdi", { show_alert: true });
+  }
+});
+
+bot.action(/withdraw_reject_(\d+)/, async (ctx) => {
+  try {
+    const withdrawalId = parseInt(ctx.match[1]);
+    const withdrawal = await prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
+    
+    if (!withdrawal) {
+      return ctx.answerCbQuery("So'rov topilmadi", { show_alert: true });
+    }
+    if (withdrawal.status !== 'PENDING') {
+      return ctx.answerCbQuery(`Allaqachon ${withdrawal.status}`, { show_alert: true });
+    }
+
+    await prisma.withdrawal.update({
+      where: { id: withdrawalId },
+      data: { status: 'REJECTED' }
+    });
+
+    await ctx.answerCbQuery("So'rov rad etildi!");
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => null);
+    await ctx.reply(`❌ So'rov ID: ${withdrawalId} rad etildi.`);
+
+    await bot.telegram.sendMessage(
+      withdrawal.userId,
+      `❌ Sizning pul yechish so'rovingiz (${withdrawal.amount.toLocaleString()} UZS) rad etildi. Iltimos, admin bilan bog'laning.`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (err) {
+    console.error(err);
+    ctx.answerCbQuery("Xatolik yuz berdi", { show_alert: true });
   }
 });
