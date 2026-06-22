@@ -190,7 +190,7 @@ app.get('/api/admin/ads', requireAdmin, async (req, res) => {
 // Serve static files from frontend build
 app.use(express.static(path.join(__dirname, '../../frontend/dist')));
 
-// Catch-all route for frontend SPA routing
-app.get('*', (req, res) => {
+// Catch-all route for frontend SPA routing (Express 5 syntax)
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
 });
