@@ -22,6 +22,7 @@ model Channel {
   id          String   @id // Telegram Channel ID
   title       String
   description String?
+  category    String   @default("Boshqa")
   adPrice     Float
   membersCount Int     @default(0)
   dailyViews  Int      @default(0)
@@ -71,4 +72,7 @@ model Settings {
   cardNumber         String   @default("")
   cardOwnerName      String   @default("")
   paymentChannelId   String   @default("") // Channel ID where bank notifications are forwarded
+  notifyNewPayment   Boolean  @default(true)
+  notifyNewUser      Boolean  @default(true)
+  notifyAdPosted     Boolean  @default(true)
 }

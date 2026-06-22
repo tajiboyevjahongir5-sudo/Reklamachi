@@ -83,14 +83,14 @@ app.post('/api/create-payment', async (req, res) => {
   }
 });
 
-// Get settings for public view (only card number)
+// Get settings for public view
 app.get('/api/settings', async (req, res) => {
   try {
     let settings = await prisma.settings.findUnique({ where: { id: 1 } });
     if (!settings) {
       settings = await prisma.settings.create({ data: { id: 1 } });
     }
-    res.json({ cardNumber: settings.cardNumber });
+    res.json({ cardNumber: settings.cardNumber, cardOwnerName: settings.cardOwnerName });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -142,10 +142,10 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 
 // CRUD Channels
 app.post('/api/admin/channels', requireAdmin, async (req, res) => {
-  const { id, title, description, adPrice, membersCount, dailyViews } = req.body;
+  const { id, title, description, category, adPrice, membersCount, dailyViews } = req.body;
   try {
     const channel = await prisma.channel.create({
-      data: { id, title, description, adPrice: Number(adPrice), membersCount: Number(membersCount), dailyViews: Number(dailyViews || 0) }
+      data: { id, title, description, category: category || 'Boshqa', adPrice: Number(adPrice), membersCount: Number(membersCount), dailyViews: Number(dailyViews || 0) }
     });
     res.json(channel);
   } catch (err) {
@@ -167,12 +167,12 @@ app.delete('/api/admin/channels/:id', requireAdmin, async (req, res) => {
 
 // Update Settings
 app.post('/api/admin/settings', requireAdmin, async (req, res) => {
-  const { cardNumber, cardOwnerName, paymentChannelId } = req.body;
+  const { cardNumber, cardOwnerName, paymentChannelId, notifyNewPayment, notifyNewUser, notifyAdPosted } = req.body;
   try {
     const settings = await prisma.settings.upsert({
       where: { id: 1 },
-      update: { cardNumber, cardOwnerName, paymentChannelId },
-      create: { id: 1, cardNumber, cardOwnerName, paymentChannelId }
+      update: { cardNumber, cardOwnerName, paymentChannelId, notifyNewPayment, notifyNewUser, notifyAdPosted },
+      create: { id: 1, cardNumber, cardOwnerName, paymentChannelId, notifyNewPayment, notifyNewUser, notifyAdPosted }
     });
     res.json(settings);
   } catch (err) {
