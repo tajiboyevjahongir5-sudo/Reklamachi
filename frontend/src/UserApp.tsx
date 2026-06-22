@@ -245,29 +245,54 @@ export default function UserApp() {
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>⏱ 24 soat</span>
             </div>
 
-            {/* Buy Button */}
-            <button
-              onClick={() => handleBuy(ch)}
-              disabled={buying}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 12,
-                background: 'rgba(0,243,255,0.1)',
-                border: '1px solid rgba(0,243,255,0.4)',
-                color: 'var(--neon-cyan)', fontWeight: 700, fontSize: 15,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(0,243,255,0.2)';
-                (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(0,243,255,0.3)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(0,243,255,0.1)';
-                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-              }}
-            >
-              <Send size={16} /> Batafsil / Sotib olish
-            </button>
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              {ch.inviteLink && (
+                <a
+                  href={ch.inviteLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 12,
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: 'var(--text-main)', fontWeight: 600, fontSize: 14,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    textDecoration: 'none', transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
+                  }}
+                >
+                  <Eye size={16} /> Ko'rish
+                </a>
+              )}
+              <button
+                onClick={() => handleBuy(ch)}
+                disabled={buying}
+                style={{
+                  flex: ch.inviteLink ? 1.5 : 1, padding: '12px', borderRadius: 12,
+                  background: 'rgba(0,243,255,0.1)',
+                  border: '1px solid rgba(0,243,255,0.4)',
+                  color: 'var(--neon-cyan)', fontWeight: 700, fontSize: 14,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(0,243,255,0.2)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(0,243,255,0.3)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(0,243,255,0.1)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                }}
+              >
+                <Send size={16} /> Sotib olish
+              </button>
+            </div>
           </div>
         ))}
       </div>

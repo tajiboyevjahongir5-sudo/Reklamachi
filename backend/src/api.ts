@@ -150,10 +150,10 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 
 // CRUD Channels
 app.post('/api/admin/channels', requireAdmin, async (req, res) => {
-  const { id, title, description, category, adPrice, membersCount, dailyViews } = req.body;
+  const { id, title, description, category, adPrice, membersCount, dailyViews, inviteLink } = req.body;
   try {
     const channel = await prisma.channel.create({
-      data: { id, title, description, category: category || 'Boshqa', adPrice: Number(adPrice), membersCount: Number(membersCount), dailyViews: Number(dailyViews || 0) }
+      data: { id, title, description, category: category || 'Boshqa', adPrice: Number(adPrice), membersCount: Number(membersCount), dailyViews: Number(dailyViews || 0), inviteLink }
     });
     res.json(channel);
   } catch (err) {

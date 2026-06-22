@@ -46,7 +46,7 @@ export default function AdminApp() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [newChannel, setNewChannel] = useState({ id: '', title: '', description: '', category: 'Texnologiya', adPrice: '', membersCount: '', dailyViews: '' });
+  const [newChannel, setNewChannel] = useState({ id: '', title: '', description: '', category: 'Texnologiya', adPrice: '', membersCount: '', dailyViews: '', inviteLink: '' });
 
   const fetchAdminData = async () => {
     try {
@@ -76,7 +76,7 @@ export default function AdminApp() {
     e.preventDefault();
     try {
       await axios.post(`${API_URL}/api/admin/channels`, newChannel, { headers: { 'x-telegram-init-data': initData } });
-      setNewChannel({ id: '', title: '', description: '', category: 'Texnologiya', adPrice: '', membersCount: '', dailyViews: '' });
+      setNewChannel({ id: '', title: '', description: '', category: 'Texnologiya', adPrice: '', membersCount: '', dailyViews: '', inviteLink: '' });
       fetchAdminData();
     } catch { alert('Xatolik'); }
   };
@@ -279,6 +279,7 @@ export default function AdminApp() {
                   <input required type="number" placeholder="Obunachilar soni" value={newChannel.membersCount} onChange={e => setNewChannel({ ...newChannel, membersCount: e.target.value })} />
                 </div>
                 <input required type="number" placeholder="1 kunlik ko'rilish soni (View)" value={newChannel.dailyViews} onChange={e => setNewChannel({ ...newChannel, dailyViews: e.target.value })} />
+                <input placeholder="Kanal linki (masalan: https://t.me/...)" value={newChannel.inviteLink} onChange={e => setNewChannel({ ...newChannel, inviteLink: e.target.value })} />
 
                 <button className="btn btn-neon" type="submit" style={{ marginTop: 10 }}><Plus size={18} /> Qo'shish</button>
               </form>
