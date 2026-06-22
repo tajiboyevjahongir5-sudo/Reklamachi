@@ -4,6 +4,14 @@ import 'dotenv/config';
 
 export const bot = new Telegraf(process.env.BOT_TOKEN || 'dummy_token');
 
+const getWebAppUrl = (path: string = '') => {
+  let url = process.env.WEBAPP_URL || 'https://google.com';
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+  return url + path;
+};
+
 bot.start(async (ctx) => {
   const user = ctx.from;
   if (user) {
@@ -21,7 +29,7 @@ bot.start(async (ctx) => {
     });
   }
 
-  const webAppUrl = process.env.WEBAPP_URL || 'https://google.com';
+  const webAppUrl = getWebAppUrl();
 
   await ctx.reply(
     '🌟 Salom! Reklamachi botga xush kelibsiz.\nKanalimizda reklama joylashtirish uchun quyidagi tugmani bosing:',
@@ -33,16 +41,16 @@ bot.start(async (ctx) => {
 
 bot.command('admin', async (ctx) => {
   const adminId = process.env.ADMIN_ID;
-  const webAppUrl = process.env.WEBAPP_URL || 'https://google.com';
+  const webAppUrl = getWebAppUrl('?admin=true');
 
   if (!adminId || ctx.from.id.toString() !== adminId) {
     return;
   }
 
   await ctx.reply(
-    '🛠 Admin Panelga xush kelibsiz! Boshqaruv uchun pastdagi tugmani bosing.',
+    '👮‍♂️ Admin panelga xush kelibsiz!',
     Markup.inlineKeyboard([
-      Markup.button.webApp('⚙️ Boshqaruv Paneli', `${webAppUrl}?admin=true`)
+      Markup.button.webApp('⚙️ Boshqaruv paneli', webAppUrl)
     ])
   );
 });
