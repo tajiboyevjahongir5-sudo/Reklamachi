@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Send, Users, CheckCircle2 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
 const MOCK_USER_ID = '123456789'; // For local testing
