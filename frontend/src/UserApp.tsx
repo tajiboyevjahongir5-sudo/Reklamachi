@@ -208,7 +208,7 @@ export default function UserApp() {
                 </h3>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', fontSize: 12 }}>
-                    <Users size={12} /> {(ch.membersCount || 0).toLocaleString()}k obunachi
+                    <Users size={12} /> {(ch.membersCount || 0).toLocaleString()} obunachi
                   </span>
                 </div>
               </div>
