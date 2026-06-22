@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Send, Users, CheckCircle2, Eye, Info, Search, MessageCircle } from 'lucide-react';
+import { Send, Users, CheckCircle2, Eye, Info, Search, MessageCircle, Plus, X } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -35,6 +35,7 @@ export default function UserApp() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Hammasi');
   const [buying, setBuying] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     if ((window as any).Telegram?.WebApp) {
@@ -94,7 +95,7 @@ export default function UserApp() {
     <div style={{ paddingBottom: 30, maxWidth: 480, margin: '0 auto' }}>
 
       {/* ======= COMPACT HEADER ======= */}
-      <div style={{ padding: '16px 16px 10px', position: 'relative' }}>
+      <div style={{ padding: '16px 16px 10px', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {/* Glow blob — subtle, small */}
         <div style={{
           position: 'absolute', top: 0, right: 20,
@@ -102,17 +103,39 @@ export default function UserApp() {
           background: 'radial-gradient(ellipse, rgba(217,0,255,0.18) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
-        <h1 style={{
-          fontSize: 22, fontWeight: 800, margin: '0 0 2px 0',
-          background: 'linear-gradient(90deg, var(--neon-cyan) 0%, #fff 45%, var(--neon-magenta) 100%)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          letterSpacing: '-0.3px',
-        }}>
-          Kanallar Katalogi
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>
-          Reklama uchun kanal tanlang
-        </p>
+        <div>
+          <h1 style={{
+            fontSize: 22, fontWeight: 800, margin: '0 0 2px 0',
+            background: 'linear-gradient(90deg, var(--neon-cyan) 0%, #fff 45%, var(--neon-magenta) 100%)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.3px',
+          }}>
+            Kanallar Katalogi
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>
+            Reklama uchun kanal tanlang
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          style={{
+            background: 'rgba(217,0,255,0.1)',
+            border: '1px solid rgba(217,0,255,0.4)',
+            color: 'var(--neon-magenta)',
+            borderRadius: 10,
+            padding: '8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            zIndex: 1
+          }}
+        >
+          <Plus size={16} /> Qo'shish
+        </button>
       </div>
 
       {/* ======= SEARCH BAR — slim ======= */}
@@ -297,42 +320,82 @@ export default function UserApp() {
         ))}
       </div>
 
-      {/* Add Channel Banner */}
-      <div style={{
-        margin: '24px 16px 0', padding: '20px 16px', borderRadius: 18,
-        background: 'rgba(217,0,255,0.04)',
-        border: '1px solid rgba(217,0,255,0.15)',
-        textAlign: 'center',
-        boxShadow: '0 0 20px rgba(217,0,255,0.05)'
-      }}>
-        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--text-main)' }}>O'z kanalingizni qo'shmoqchimisiz?</h3>
-        <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          Ushbu katalogga o'z kanalingizni joylashtirish va biz orqali reklama sotish uchun admin bilan bog'laning.
-        </p>
-        <a
-          href="https://t.me/jahongir_1220"
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '10px 20px', borderRadius: 12,
-            background: 'rgba(217,0,255,0.1)', color: 'var(--neon-magenta)',
-            textDecoration: 'none', fontWeight: 600, fontSize: 14,
-            border: '1px solid rgba(217,0,255,0.3)',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.background = 'rgba(217,0,255,0.15)';
-            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 12px rgba(217,0,255,0.2)';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.background = 'rgba(217,0,255,0.1)';
-            (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-          }}
-        >
-          <MessageCircle size={16} /> Adminga yozish
-        </a>
-      </div>
+      {/* Add Channel Modal */}
+      {showAddModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: 20
+        }} onClick={() => setShowAddModal(false)}>
+          <div
+            style={{
+              background: 'rgba(15,15,25,0.98)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 24,
+              padding: '24px',
+              width: '100%',
+              maxWidth: 400,
+              animation: 'slideUp 0.3s ease',
+              position: 'relative'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowAddModal(false)}
+              style={{
+                position: 'absolute', top: 16, right: 16,
+                background: 'rgba(255,255,255,0.1)', border: 'none',
+                color: 'white', borderRadius: '50%', width: 28, height: 28,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+              }}
+            >
+              <X size={16} />
+            </button>
+            
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ 
+                width: 56, height: 56, borderRadius: '50%', margin: '0 auto 12px',
+                background: 'rgba(217,0,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1px solid rgba(217,0,255,0.3)', boxShadow: '0 0 15px rgba(217,0,255,0.2)'
+              }}>
+                <Plus size={30} color="var(--neon-magenta)" />
+              </div>
+              <h2 style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--text-main)' }}>Kanal qo'shish qoidalari</h2>
+            </div>
+
+            <div style={{ 
+              background: 'rgba(255,255,255,0.03)', borderRadius: 16, padding: 16, marginBottom: 20,
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.6 }}>
+                <li style={{ marginBottom: 8 }}>Kamida <strong>1000 obunachisi</strong> bo'lgan kanal bo'lishi kerak.</li>
+                <li style={{ marginBottom: 8 }}>Botga kanalni ulash narxi <strong>20,000 so'm</strong>.</li>
+                <li style={{ marginBottom: 8 }}>Tushayotgan reklama pulining <strong>10% qismi</strong> ushlab qolinadi.</li>
+              </ul>
+            </div>
+
+            <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-main)', marginBottom: 20, fontWeight: 500 }}>
+              Shu shartlarga rozi bo'lsangiz, adminga murojaat qiling:
+            </p>
+
+            <a
+              href="https://t.me/jahongir_1220"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', padding: '14px', borderRadius: 14,
+                background: 'linear-gradient(135deg, var(--neon-magenta), #ff007f)',
+                color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 15,
+                boxShadow: '0 4px 15px rgba(217,0,255,0.3)'
+              }}
+            >
+              <MessageCircle size={18} /> Adminga yozish
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Payment Modal */}
       {selectedChannel && paymentData && (
