@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "start": "npx prisma db push && ts-node src/index.ts",
     "dev": "nodemon src/index.ts",
     "build": "tsc"
   },
