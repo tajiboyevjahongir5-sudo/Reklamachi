@@ -310,7 +310,7 @@ export default function UserApp() {
           Ushbu katalogga o'z kanalingizni joylashtirish va biz orqali reklama sotish uchun admin bilan bog'laning.
         </p>
         <a
-          href="https://t.me/Sizning_useringiz"
+          href="https://t.me/jahongir_1220"
           target="_blank"
           rel="noreferrer"
           style={{
