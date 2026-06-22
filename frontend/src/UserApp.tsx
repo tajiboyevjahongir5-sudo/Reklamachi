@@ -91,60 +91,61 @@ export default function UserApp() {
   return (
     <div style={{ paddingBottom: 30, maxWidth: 480, margin: '0 auto' }}>
 
-      {/* ======= HERO HEADER ======= */}
-      <div style={{ padding: '28px 20px 0', textAlign: 'center', position: 'relative' }}>
+      {/* ======= COMPACT HEADER ======= */}
+      <div style={{ padding: '16px 16px 10px', position: 'relative' }}>
+        {/* Glow blob — subtle, small */}
         <div style={{
-          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-          width: 200, height: 80,
-          background: 'radial-gradient(ellipse, rgba(217,0,255,0.25) 0%, transparent 70%)',
-          pointerEvents: 'none', zIndex: 0,
+          position: 'absolute', top: 0, right: 20,
+          width: 120, height: 60,
+          background: 'radial-gradient(ellipse, rgba(217,0,255,0.18) 0%, transparent 70%)',
+          pointerEvents: 'none',
         }} />
         <h1 style={{
-          fontSize: 30, fontWeight: 900, margin: '0 0 6px 0', position: 'relative', zIndex: 1,
-          background: 'linear-gradient(90deg, var(--neon-cyan) 0%, #fff 40%, var(--neon-magenta) 100%)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px',
+          fontSize: 22, fontWeight: 800, margin: '0 0 2px 0',
+          background: 'linear-gradient(90deg, var(--neon-cyan) 0%, #fff 45%, var(--neon-magenta) 100%)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          letterSpacing: '-0.3px',
         }}>
           Kanallar Katalogi
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 20px', position: 'relative', zIndex: 1 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>
           Reklama uchun kanal tanlang
         </p>
       </div>
 
-      {/* ======= SEARCH BAR ======= */}
-      <div style={{ padding: '0 16px 14px' }}>
+      {/* ======= SEARCH BAR — slim ======= */}
+      <div style={{ padding: '0 16px 10px' }}>
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'rgba(255,255,255,0.04)',
-          border: '1.5px solid rgba(0,243,255,0.22)',
-          borderRadius: 16, padding: '11px 16px',
-          backdropFilter: 'blur(14px)',
-          boxShadow: '0 0 20px rgba(0,243,255,0.08), inset 0 0 10px rgba(0,0,0,0.2)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(0,243,255,0.2)',
+          borderRadius: 12, padding: '9px 13px',
+          boxShadow: '0 0 14px rgba(0,243,255,0.06)',
         }}>
-          <Search size={17} color="var(--neon-cyan)" style={{ flexShrink: 0, opacity: 0.8 }} />
+          <Search size={15} color="rgba(0,243,255,0.7)" style={{ flexShrink: 0 }} />
           <input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Kanal nomini kiriting..."
+            placeholder="Izlash..."
             style={{
               background: 'transparent', border: 'none', outline: 'none', margin: 0,
-              color: 'var(--text-main)', fontSize: 14, width: '100%', fontFamily: 'Inter, sans-serif',
+              color: 'var(--text-main)', fontSize: 13, width: '100%', fontFamily: 'Inter, sans-serif',
             }}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{
-              background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-muted)',
-              width: 22, height: 22, borderRadius: '50%', cursor: 'pointer',
+              background: 'rgba(255,255,255,0.08)', border: 'none', color: 'var(--text-muted)',
+              width: 18, height: 18, borderRadius: '50%', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, flexShrink: 0, padding: 0,
+              fontSize: 11, flexShrink: 0, padding: 0,
             }}>✕</button>
           )}
         </div>
       </div>
 
-      {/* ======= CATEGORY PILLS ======= */}
+      {/* ======= CATEGORY PILLS — compact ======= */}
       <div style={{
-        display: 'flex', gap: 7, padding: '0 16px 20px',
+        display: 'flex', gap: 6, padding: '0 16px 14px',
         overflowX: 'auto', scrollbarWidth: 'none',
       }}>
         {CATEGORIES.map(cat => {
@@ -155,20 +156,17 @@ export default function UserApp() {
               onClick={() => setActiveCategory(cat)}
               style={{
                 flexShrink: 0,
-                padding: isActive ? '7px 16px' : '6px 13px',
-                borderRadius: 24, fontSize: 13,
-                fontWeight: isActive ? 700 : 500,
+                padding: '5px 12px',
+                borderRadius: 20, fontSize: 12,
+                fontWeight: isActive ? 700 : 400,
                 border: isActive ? 'none' : '1px solid rgba(255,255,255,0.1)',
                 cursor: 'pointer',
-                transition: 'all 0.25s cubic-bezier(.4,0,.2,1)',
+                transition: 'all 0.2s ease',
                 background: isActive
                   ? 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-magenta) 100%)'
-                  : 'rgba(255,255,255,0.05)',
+                  : 'rgba(255,255,255,0.04)',
                 color: isActive ? '#050510' : 'var(--text-muted)',
-                boxShadow: isActive
-                  ? '0 0 16px rgba(0,243,255,0.5), 0 2px 8px rgba(0,0,0,0.3)'
-                  : 'none',
-                transform: isActive ? 'translateY(-1px) scale(1.05)' : 'none',
+                boxShadow: isActive ? '0 0 10px rgba(0,243,255,0.45)' : 'none',
               }}
             >{cat}</button>
           );
