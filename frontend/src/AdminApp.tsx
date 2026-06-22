@@ -234,7 +234,7 @@ export default function AdminApp() {
 
             <div style={{ marginTop: 20, padding: 14, background: 'rgba(0,243,255,0.04)', borderRadius: 12, border: '1px solid rgba(0,243,255,0.15)' }}>
               <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                ℹ️ Bildirishnomalar siz ko'rsatgan <strong style={{ color: 'var(--text-main)' }}>To'lov Kanali ID</strong> ga yuboriladi. Sozlamalar bo'limida ID ni to'g'ri kiriting.
+                ℹ️ Bildirishnomalar to'g'ridan-to'g'ri Adminning Telegram shaxsiy xabariga (DM) yuboriladi.
               </p>
             </div>
           </div>
@@ -367,8 +367,16 @@ export default function AdminApp() {
               <div key={ch.id} className="inner-card" style={{ marginBottom: 10 }}>
                 <h4 style={{ color: 'var(--neon-cyan)', marginBottom: 8 }}>{ch.title}</h4>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Daromad:</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Jami daromad:</span>
                   <strong>{ch.revenue.toLocaleString()} UZS</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>1 kunlik daromad:</span>
+                  <strong style={{ color: 'var(--neon-green)' }}>{(ch.revenue1d || 0).toLocaleString()} UZS</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>30 kunlik daromad:</span>
+                  <strong style={{ color: 'var(--neon-cyan)' }}>{(ch.revenue30d || 0).toLocaleString()} UZS</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Faol Reklama:</span>

@@ -15,6 +15,7 @@ const getWebAppUrl = (path: string = '') => {
 bot.start(async (ctx) => {
   const user = ctx.from;
   if (user) {
+    const existingUser = await prisma.user.findUnique({ where: { id: user.id.toString() } });
     await prisma.user.upsert({
       where: { id: user.id.toString() },
       update: {
@@ -27,6 +28,18 @@ bot.start(async (ctx) => {
         firstName: user.first_name,
       }
     });
+
+    if (!existingUser) {
+      const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+      const adminId = process.env.ADMIN_ID;
+      if (settings?.notifyNewUser && adminId) {
+        bot.telegram.sendMessage(
+          adminId, 
+          `🔔 *Yangi a'zo!*\nFoydalanuvchi: ${user.first_name} ${user.username ? `(@${user.username})` : ''}`, 
+          { parse_mode: 'Markdown' }
+        ).catch(() => null);
+      }
+    }
   }
 
   const webAppUrl = getWebAppUrl();
@@ -123,6 +136,15 @@ bot.on('channel_post', async (ctx) => {
         `✅ To'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nIltimos, **${payment.channel.title}** kanaliga joylanishi kerak bo'lgan reklama xabarini (matn, rasm yoki video) menga yuboring.`,
         { parse_mode: 'Markdown' }
       );
+
+      const adminId = process.env.ADMIN_ID;
+      if (settings?.notifyNewPayment && adminId) {
+        bot.telegram.sendMessage(
+          adminId, 
+          `💰 *Yangi To'lov Tasdiqlandi!*\nKanal: ${payment.channel.title}\nSumma: ${payment.amount.toLocaleString()} UZS\nMijoz ID: ${payment.userId}`, 
+          { parse_mode: 'Markdown' }
+        ).catch(() => null);
+      }
     } catch (err) {
       console.error("Auto confirmation error for payment ID " + payment.id + ":", err);
     }
@@ -164,6 +186,16 @@ bot.on('message', async (ctx) => {
     });
 
     await ctx.reply(`✅ Reklamangiz **${waitingTask.channel.title}** kanaliga muvaffaqiyatli joylandi!\n\nU 24 soatdan so'ng avtomatik o'chiriladi.`, { parse_mode: 'Markdown' });
+
+    const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+    const adminId = process.env.ADMIN_ID;
+    if (settings?.notifyAdPosted && adminId) {
+      bot.telegram.sendMessage(
+        adminId,
+        `📢 *Yangi Reklama Joylandi!*\nKanal: ${waitingTask.channel.title}\nMijoz: ${ctx.from.first_name} ${ctx.from.username ? `(@${ctx.from.username})` : ''}\nMijoz ID: ${userId}`,
+        { parse_mode: 'Markdown' }
+      ).catch(() => null);
+    }
 
   } catch (err: any) {
     console.error("Error copying ad message:", err);

@@ -124,11 +124,23 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     });
     const activeAds = await prisma.adTask.count({ where: { status: 'POSTED' } });
     
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
     // Group payments by channel
     const channels = await prisma.channel.findMany();
     const channelStats = await Promise.all(channels.map(async (ch) => {
       const rev = await prisma.payment.aggregate({
         where: { channelId: ch.id, status: 'COMPLETED' },
+        _sum: { amount: true }
+      });
+      const rev1d = await prisma.payment.aggregate({
+        where: { channelId: ch.id, status: 'COMPLETED', createdAt: { gte: oneDayAgo } },
+        _sum: { amount: true }
+      });
+      const rev30d = await prisma.payment.aggregate({
+        where: { channelId: ch.id, status: 'COMPLETED', createdAt: { gte: thirtyDaysAgo } },
         _sum: { amount: true }
       });
       const active = await prisma.adTask.count({
@@ -138,6 +150,8 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
         id: ch.id,
         title: ch.title,
         revenue: rev._sum.amount || 0,
+        revenue1d: rev1d._sum.amount || 0,
+        revenue30d: rev30d._sum.amount || 0,
         activeAds: active
       };
     }));
