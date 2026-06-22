@@ -1,0 +1,13 @@
+{
+  "name": "reklamachi-bot",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "build:backend": "cd backend && npx prisma generate && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run install:backend && npm run build:backend && npm run install:frontend && npm run build:frontend",
+    "start": "cd backend && node dist/index.js"
+  }
+}
