@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Send, Users, CheckCircle2, Eye, Info, Search } from 'lucide-react';
+import { Send, Users, CheckCircle2, Eye, Info, Search, MessageCircle } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -295,6 +295,43 @@ export default function UserApp() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Add Channel Banner */}
+      <div style={{
+        margin: '24px 16px 0', padding: '20px 16px', borderRadius: 18,
+        background: 'rgba(217,0,255,0.04)',
+        border: '1px solid rgba(217,0,255,0.15)',
+        textAlign: 'center',
+        boxShadow: '0 0 20px rgba(217,0,255,0.05)'
+      }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--text-main)' }}>O'z kanalingizni qo'shmoqchimisiz?</h3>
+        <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Ushbu katalogga o'z kanalingizni joylashtirish va biz orqali reklama sotish uchun admin bilan bog'laning.
+        </p>
+        <a
+          href="https://t.me/Sizning_useringiz"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '10px 20px', borderRadius: 12,
+            background: 'rgba(217,0,255,0.1)', color: 'var(--neon-magenta)',
+            textDecoration: 'none', fontWeight: 600, fontSize: 14,
+            border: '1px solid rgba(217,0,255,0.3)',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(217,0,255,0.15)';
+            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 12px rgba(217,0,255,0.2)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(217,0,255,0.1)';
+            (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+          }}
+        >
+          <MessageCircle size={16} /> Adminga yozish
+        </a>
       </div>
 
       {/* Payment Modal */}
