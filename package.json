@@ -8,6 +8,6 @@
     "build:backend": "cd backend && npx prisma generate && npm run build",
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run install:backend && npm run build:backend && npm run install:frontend && npm run build:frontend",
-    "start": "cd backend && npx prisma db push && node dist/index.js"
+    "start": "cd backend && npx prisma db push --accept-data-loss && node dist/index.js"
   }
 }
