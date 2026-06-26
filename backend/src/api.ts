@@ -437,7 +437,10 @@ app.get('/api/admin/settings', requireAdmin, async (req, res) => {
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: {
+        listings: true
+      }
     });
     res.json(users);
   } catch (err) {

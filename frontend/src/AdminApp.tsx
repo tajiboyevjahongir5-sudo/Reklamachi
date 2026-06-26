@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings, Users, Activity, Trash2, MonitorPlay, TrendingUp, ShoppingCart, ShieldCheck, CreditCard, Bell } from 'lucide-react';
+import { Settings, Users, Activity, Trash2, MonitorPlay, TrendingUp, ShoppingCart, ShieldCheck, CreditCard, Bell, Search, Send, PhoneOff, Phone, IdCard, Clock, Plus } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -10,6 +10,7 @@ export default function AdminApp() {
   const [listings, setListings] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
+  const [searchUserQuery, setSearchUserQuery] = useState('');
   const [settings, setSettings] = useState<any>({
     cardNumber: '',
     cardOwnerName: '',
@@ -218,34 +219,91 @@ export default function AdminApp() {
 
         {activeTab === 'users' && (
           <div>
-            <h2 className="admin-section-title">Mijozlar ({users.length})</h2>
-            <div className="admin-table-wrapper">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Ism</th>
-                    <th>Username</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map(u => (
-                    <tr key={u.id}>
-                      <td>{u.id}</td>
-                      <td className="td-main">{u.firstName || '-'}</td>
-                      <td className="td-accent">{u.username ? `@${u.username}` : '-'}</td>
-                    </tr>
-                  ))}
-                  {users.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="admin-empty">
-                        <Users className="admin-empty-icon" />
-                        <br />Mijozlar yo'q.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 className="admin-section-title" style={{ margin: 0 }}>Foydalanuvchilar</h2>
+              <span style={{ color: '#3b82f6', fontSize: 13, fontWeight: 700 }}>{users.length} ta</span>
+            </div>
+
+            <div className="admin-search-box">
+              <Search size={16} />
+              <input 
+                placeholder="Ism, ID yoki username bo'yicha izlash..." 
+                value={searchUserQuery}
+                onChange={e => setSearchUserQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-users-list">
+              {users.filter(u => 
+                (u.firstName || '').toLowerCase().includes(searchUserQuery.toLowerCase()) || 
+                (u.username || '').toLowerCase().includes(searchUserQuery.toLowerCase()) ||
+                u.id.includes(searchUserQuery)
+              ).map(u => (
+                <div key={u.id} className="admin-user-card">
+                  <div className="auc-header">
+                    <div className="auc-avatar">
+                      {u.firstName ? u.firstName[0].toUpperCase() : 'U'}
+                    </div>
+                    <div className="auc-info">
+                      <div className="auc-name">{u.firstName || 'Foydalanuvchi'}</div>
+                      <a href={u.username ? `https://t.me/${u.username}` : '#'} target="_blank" className="auc-username">
+                        @{u.username || 'username_yoq'}
+                      </a>
+                    </div>
+                    {u.username && (
+                      <a href={`https://t.me/${u.username}`} target="_blank" className="auc-send-btn">
+                        <Send size={14} />
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="auc-details">
+                    <div className="auc-meta-list">
+                      <div className={`auc-meta-item ${!u.phoneNumber ? 'text-red' : ''}`}>
+                        {u.phoneNumber ? <Phone size={14} /> : <PhoneOff size={14} />}
+                        <span>{u.phoneNumber || 'Raqam kiritilmagan'}</span>
+                      </div>
+                      <div className="auc-meta-item">
+                        <IdCard size={14} />
+                        <span>ID: {u.id}</span>
+                      </div>
+                      <div className="auc-meta-item">
+                        <Clock size={14} />
+                        <span>{new Date(u.createdAt).toLocaleString('ru-RU').slice(0, 16)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="auc-actions">
+                      {u.listings && u.listings.length > 0 ? (
+                        <div className="auc-status active">
+                          E'lon: {u.listings.length} ta
+                        </div>
+                      ) : (
+                        <div className="auc-status inactive">
+                          E'lon yo'q
+                        </div>
+                      )}
+                      
+                      <button className="auc-btn-info" onClick={() => {
+                        alert(`${u.firstName || 'U'}da ${u.listings?.length || 0} ta e'lon bor.`);
+                      }}>
+                        <Plus size={14} /> E'lonlarini ko'rish
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {users.filter(u => 
+                (u.firstName || '').toLowerCase().includes(searchUserQuery.toLowerCase()) || 
+                (u.username || '').toLowerCase().includes(searchUserQuery.toLowerCase()) ||
+                u.id.includes(searchUserQuery)
+              ).length === 0 && (
+                <div className="admin-empty">
+                  <Users className="admin-empty-icon" />
+                  <br />Mijozlar topilmadi.
+                </div>
+              )}
             </div>
           </div>
         )}
