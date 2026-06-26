@@ -1,392 +1,304 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { CreditCard, Send, PlusSquare, Users, BarChart2, CheckCircle2, XCircle, Clock, Trash2, Plus, Bell } from 'lucide-react';
+import { Settings, Users, Activity, CheckCircle2, Trash2, MonitorPlay } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
-const initData = (window as any).Telegram?.WebApp?.initData || 'query_id=mock';
-
-type Tab = 'tolovlar' | 'bildirishnoma' | 'xabarnoma' | 'kanal' | 'foydalanuvchilar' | 'statistika';
-type Filter = 'Kutayotgan' | 'Tasdiqlangan' | 'Bekor' | 'Hammasi';
-
-const CATEGORIES = ["Ta'lim", 'Texnologiya', 'Kino', 'Biznes', 'Sport', 'Yangiliklar', 'Boshqa'];
-
-// Toggle Switch component
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div
-      onClick={() => onChange(!checked)}
-      style={{
-        width: 52, height: 28, borderRadius: 14, position: 'relative', cursor: 'pointer',
-        background: checked
-          ? 'linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta))'
-          : 'rgba(255,255,255,0.1)',
-        border: checked ? 'none' : '1px solid rgba(255,255,255,0.15)',
-        transition: 'all 0.3s',
-        boxShadow: checked ? '0 0 10px rgba(0,243,255,0.4)' : 'none',
-        flexShrink: 0,
-      }}
-    >
-      <div style={{
-        position: 'absolute', top: 3, left: checked ? 27 : 3,
-        width: 22, height: 22, borderRadius: '50%', background: 'white',
-        transition: 'left 0.3s', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-      }} />
-    </div>
-  );
-}
 
 export default function AdminApp() {
-  const [activeTab, setActiveTab] = useState<Tab>('tolovlar');
-  const [filter, setFilter] = useState<Filter>('Hammasi');
-
-  const [stats, setStats] = useState<any>({});
-  const [channels, setChannels] = useState<any[]>([]);
-  const [settings, setSettings] = useState<any>({});
-  const [ads, setAds] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('stats');
+  const [stats, setStats] = useState<any>(null);
+  const [listings, setListings] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>({
+    cardNumber: '',
+    cardOwnerName: '',
+    paymentChannelId: '',
+    notifyNewPayment: true,
+    notifyNewUser: true,
+    listingFee: 20000,
+    commissionRate: 10
+  });
+
   const [loading, setLoading] = useState(true);
 
-  const [newChannel, setNewChannel] = useState({ id: '', title: '', description: '', category: 'Texnologiya', adPrice: '', membersCount: '', dailyViews: '', inviteLink: '' });
+  // Use initData directly to get x-telegram-init-data for auth
+  const initData = (window as any).Telegram?.WebApp?.initData || '';
 
-  const fetchAdminData = async () => {
-    try {
-      const headers = { 'x-telegram-init-data': initData };
-      const [statsRes, channelsRes, settingsRes, adsRes, usersRes] = await Promise.all([
-        axios.get(`${API_URL}/api/admin/stats`, { headers }),
-        axios.get(`${API_URL}/api/channels`, { headers }),
-        axios.get(`${API_URL}/api/admin/settings`, { headers }),
-        axios.get(`${API_URL}/api/admin/ads`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API_URL}/api/admin/users`, { headers }).catch(() => ({ data: [] }))
-      ]);
-      setStats(statsRes.data);
-      setChannels(channelsRes.data);
-      setSettings(settingsRes.data);
-      setAds(adsRes.data);
-      setUsers(usersRes.data);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      alert('Siz admin emassiz yoki tizim xatosi.');
+  const axiosConfig = {
+    headers: {
+      'x-telegram-init-data': initData
     }
   };
 
-  useEffect(() => { fetchAdminData(); }, []);
+  useEffect(() => {
+    if ((window as any).Telegram?.WebApp) {
+      (window as any).Telegram.WebApp.ready();
+      (window as any).Telegram.WebApp.expand();
+    }
+    fetchData();
+  }, [activeTab]);
 
-  const addChannel = async (e: any) => {
-    e.preventDefault();
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      await axios.post(`${API_URL}/api/admin/channels`, newChannel, { headers: { 'x-telegram-init-data': initData } });
-      setNewChannel({ id: '', title: '', description: '', category: 'Texnologiya', adPrice: '', membersCount: '', dailyViews: '', inviteLink: '' });
-      fetchAdminData();
-    } catch { alert('Xatolik'); }
+      if (activeTab === 'stats') {
+        const res = await axios.get(`${API_URL}/api/admin/stats`, axiosConfig);
+        setStats(res.data);
+      } else if (activeTab === 'listings') {
+        const res = await axios.get(`${API_URL}/api/admin/listings`, axiosConfig);
+        setListings(res.data);
+      } else if (activeTab === 'users') {
+        const res = await axios.get(`${API_URL}/api/admin/users`, axiosConfig);
+        setUsers(res.data);
+      } else if (activeTab === 'sales') {
+        const res = await axios.get(`${API_URL}/api/admin/sales`, axiosConfig);
+        setSales(res.data);
+      } else if (activeTab === 'settings') {
+        const res = await axios.get(`${API_URL}/api/admin/settings`, axiosConfig);
+        setSettings(res.data);
+      }
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        alert("Siz admin emassiz yoki sessiya eskirgan.");
+      }
+      console.error(err);
+    }
+    setLoading(false);
   };
 
-  const deleteChannel = async (id: string) => {
-    if (!confirm("Ishonchingiz komilmi?")) return;
+  const handleSaveSettings = async () => {
     try {
-      await axios.delete(`${API_URL}/api/admin/channels/${id}`, { headers: { 'x-telegram-init-data': initData } });
-      fetchAdminData();
-    } catch { alert('Xatolik'); }
+      await axios.post(`${API_URL}/api/admin/settings`, settings, axiosConfig);
+      alert('Sozlamalar saqlandi!');
+    } catch (err) {
+      alert('Xatolik yuz berdi');
+    }
   };
 
-  const saveSettings = async () => {
+  const handleDeleteListing = async (id: number) => {
+    if (!window.confirm("Rostdan ham bu e'lonni o'chirmoqchimisiz?")) return;
     try {
-      await axios.post(`${API_URL}/api/admin/settings`, settings, { headers: { 'x-telegram-init-data': initData } });
-      alert("Sozlamalar saqlandi!");
-    } catch { alert('Xatolik'); }
+      await axios.delete(`${API_URL}/api/admin/listings/${id}`, axiosConfig);
+      fetchData();
+    } catch (err) {
+      alert('Xatolik yuz berdi');
+    }
   };
 
-  const filteredAds = ads.filter(ad => {
-    if (filter === 'Hammasi') return true;
-    if (filter === 'Kutayotgan') return ad.status === 'WAITING_CONTENT' || ad.status === 'PENDING';
-    if (filter === 'Tasdiqlangan') return ad.status === 'POSTED';
-    if (filter === 'Bekor') return ad.status === 'DELETED' || ad.status === 'CANCELLED';
-    return true;
-  });
-
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Yuklanmoqda...</div>;
-
-  const TABS = [
-    { key: 'tolovlar',        icon: <CreditCard size={20} />,  label: "To'lovlar" },
-    { key: 'bildirishnoma',   icon: <Bell size={20} />,        label: "Bildirishnomalar" },
-    { key: 'xabarnoma',       icon: <Send size={20} />,        label: "Sozlamalar" },
-    { key: 'kanal',           icon: <PlusSquare size={20} />,  label: "Kanal +" },
-    { key: 'foydalanuvchilar',icon: <Users size={20} />,       label: "A'zolar" },
-    { key: 'statistika',      icon: <BarChart2 size={20} />,   label: "Statistika" },
-  ];
+  if (loading && !stats) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 16 }}>
+      <MonitorPlay size={48} color="var(--yt-red)" style={{ animation: 'pulse 1.5s infinite' }} />
+      <p style={{ color: 'var(--text-muted)' }}>Yuklanmoqda...</p>
+    </div>
+  );
 
   return (
-    <div>
+    <div style={{ paddingBottom: 30, maxWidth: 600, margin: '0 auto' }}>
       <div className="header-container">
-        <div className="logo-text">REKLAMACHI BOT</div>
-        <div className="admin-badge">
-          <span style={{ display: 'inline-block', width: 6, height: 6, background: 'var(--neon-green)', borderRadius: '50%', marginRight: 6, boxShadow: '0 0 5px var(--neon-green)' }}></span>
-          Admin
+        <div className="logo-text">
+          <MonitorPlay size={28} color="var(--yt-red)" /> Admin Panel
         </div>
+        <div className="admin-badge">Admin</div>
       </div>
 
       <div className="main-glass-panel">
-        <h2 style={{ marginBottom: 16, fontSize: 18, fontWeight: 600 }}>Boshqaruv Paneli</h2>
-
-        {/* Tabs - 3+3 grid on small screens */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 20 }}>
-          {TABS.map(tab => (
-            <div
-              key={tab.key}
-              className={`tab-btn ${activeTab === tab.key ? 'active' : ''}`}
-              style={{ minWidth: 'unset', flex: 'unset', padding: '10px 6px', fontSize: 11 }}
-              onClick={() => setActiveTab(tab.key as Tab)}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </div>
-          ))}
+        <div className="tabs-container">
+          <button className={`tab-btn ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
+            <Activity size={20} />
+            Statistika
+          </button>
+          <button className={`tab-btn ${activeTab === 'listings' ? 'active' : ''}`} onClick={() => setActiveTab('listings')}>
+            <MonitorPlay size={20} />
+            E'lonlar
+          </button>
+          <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+            <Users size={20} />
+            Mijozlar
+          </button>
+          <button className={`tab-btn ${activeTab === 'sales' ? 'active' : ''}`} onClick={() => setActiveTab('sales')}>
+            <CheckCircle2 size={20} />
+            Sotuvlar
+          </button>
+          <button className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+            <Settings size={20} />
+            Sozlamalar
+          </button>
         </div>
 
-        {/* ---- TO'LOVLAR TAB ---- */}
-        {activeTab === 'tolovlar' && (
+        {activeTab === 'stats' && stats && (
           <div>
-            <div className="section-title">
-              To'lovlar va Reklamalar <span style={{ fontSize: 14, color: 'var(--neon-cyan)' }}>{filteredAds.length} ta</span>
-            </div>
-            <div className="filter-container">
-              {(['Kutayotgan', 'Tasdiqlangan', 'Bekor', 'Hammasi'] as Filter[]).map(f => (
-                <div key={f} className={`filter-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-                  {f === 'Kutayotgan' && <Clock size={13} />}
-                  {f === 'Tasdiqlangan' && <CheckCircle2 size={13} color="var(--neon-green)" />}
-                  {f === 'Bekor' && <XCircle size={13} color="var(--neon-red)" />}
-                  {f}
+            <h2 className="section-title">Umumiy Statistika</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+              <div className="inner-card">
+                <div className="meta">Foydalanuvchilar</div>
+                <div className="amount" style={{ color: 'var(--text-main)' }}>{stats.totalUsers}</div>
+              </div>
+              <div className="inner-card">
+                <div className="meta">Aktiv E'lonlar</div>
+                <div className="amount" style={{ color: 'var(--text-main)' }}>{stats.activeListings}</div>
+              </div>
+              <div className="inner-card">
+                <div className="meta">E'lon daromadi</div>
+                <div className="amount" style={{ color: 'var(--yt-light-red)', fontSize: 18 }}>
+                  {stats.listingRevenue.toLocaleString()} <span style={{ fontSize: 12 }}>UZS</span>
                 </div>
-              ))}
-            </div>
-            <div className="ads-list">
-              {filteredAds.map(ad => (
-                <div key={ad.id} className="inner-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h4 style={{ fontSize: 15, marginBottom: 4 }}>{ad.user?.firstName || 'User'} (@{ad.user?.username || 'user'})</h4>
-                      <div className="amount">{(ad.channel?.adPrice || 0).toLocaleString()} UZS</div>
-                      <div className="meta">Kanal: {ad.channel?.title || 'Noma\'lum'}</div>
-                      <div className="meta" style={{ fontSize: 11 }}>{new Date(ad.createdAt).toLocaleString()}</div>
-                    </div>
-                    <div>
-                      {ad.status === 'POSTED' && <CheckCircle2 color="var(--neon-green)" />}
-                      {ad.status === 'WAITING_CONTENT' && <Clock color="var(--neon-orange)" />}
-                      {ad.status === 'DELETED' && <XCircle color="var(--neon-red)" />}
-                    </div>
-                  </div>
+              </div>
+              <div className="inner-card">
+                <div className="meta">Xarid aylanmasi</div>
+                <div className="amount" style={{ color: 'var(--success-green)', fontSize: 18 }}>
+                  {stats.purchaseRevenue.toLocaleString()} <span style={{ fontSize: 12 }}>UZS</span>
                 </div>
-              ))}
-              {filteredAds.length === 0 && <p style={{ textAlign: 'center', marginTop: 20 }}>Ma'lumot topilmadi</p>}
+              </div>
+            </div>
+
+            <h3 style={{ marginBottom: 12, fontSize: 16 }}>E'lonlar bo'yicha tushumlar</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                    <th style={{ padding: '8px 4px' }}>Kanal nomi</th>
+                    <th style={{ padding: '8px 4px' }}>24s</th>
+                    <th style={{ padding: '8px 4px' }}>30k</th>
+                    <th style={{ padding: '8px 4px' }}>Jami</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.listingStats.map((cs: any) => (
+                    <tr key={cs.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '8px 4px', color: 'var(--text-main)' }}>{cs.title}</td>
+                      <td style={{ padding: '8px 4px', color: 'var(--text-muted)' }}>{cs.revenue1d.toLocaleString()}</td>
+                      <td style={{ padding: '8px 4px', color: 'var(--text-muted)' }}>{cs.revenue30d.toLocaleString()}</td>
+                      <td style={{ padding: '8px 4px', color: 'var(--success-green)', fontWeight: 'bold' }}>{cs.revenue.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {stats.listingStats.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)' }}>Ma'lumot yo'q</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
-        {/* ---- BILDIRISHNOMALAR TAB ---- */}
-        {activeTab === 'bildirishnoma' && (
+        {activeTab === 'listings' && (
           <div>
-            <div className="section-title">Bildirishnomalar</div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
-              Qaysi hodisalar haqida bildirishnoma olishni tanlang:
-            </p>
-
-            <div className="inner-card" style={{ padding: '4px 0' }}>
-              {/* Notify new payment */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--glass-border)' }}>
+            <h2 className="section-title">Barcha E'lonlar</h2>
+            {listings.map(c => (
+              <div key={c.id} className="inner-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>Yangi To'lov Haqida</div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Mijoz to'lov o'tkazganida xabar keladi</div>
-                </div>
-                <Toggle
-                  checked={settings.notifyNewPayment ?? true}
-                  onChange={v => setSettings({ ...settings, notifyNewPayment: v })}
-                />
-              </div>
-
-              {/* Notify new user */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--glass-border)' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>Yangi A'zo Haqida</div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Yangi foydalanuvchi botga kirganida xabar keladi</div>
-                </div>
-                <Toggle
-                  checked={settings.notifyNewUser ?? true}
-                  onChange={v => setSettings({ ...settings, notifyNewUser: v })}
-                />
-              </div>
-
-              {/* Notify ad posted */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>Reklama Joylashtirilganda</div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Reklama kanalga joylashtirilganida xabar keladi</div>
-                </div>
-                <Toggle
-                  checked={settings.notifyAdPosted ?? true}
-                  onChange={v => setSettings({ ...settings, notifyAdPosted: v })}
-                />
-              </div>
-            </div>
-
-            <button className="btn btn-neon" onClick={saveSettings} style={{ marginTop: 16 }}>
-              Saqlash
-            </button>
-
-            <div style={{ marginTop: 20, padding: 14, background: 'rgba(0,243,255,0.04)', borderRadius: 12, border: '1px solid rgba(0,243,255,0.15)' }}>
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                ℹ️ Bildirishnomalar to'g'ridan-to'g'ri Adminning Telegram shaxsiy xabariga (DM) yuboriladi.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ---- SOZLAMALAR TAB ---- */}
-        {activeTab === 'xabarnoma' && (
-          <div>
-            <div className="section-title">Asosiy Sozlamalar</div>
-            <div className="inner-card">
-              <label style={{ display: 'block', marginBottom: 8, fontSize: 13, color: 'var(--text-muted)' }}>Karta Raqami</label>
-              <input value={settings.cardNumber || ''} onChange={e => setSettings({ ...settings, cardNumber: e.target.value })} placeholder="8600 1234 5678 9012" />
-
-              <label style={{ display: 'block', marginBottom: 8, fontSize: 13, color: 'var(--text-muted)' }}>Karta Egasi (Ism Familiya)</label>
-              <input value={settings.cardOwnerName || ''} onChange={e => setSettings({ ...settings, cardOwnerName: e.target.value })} placeholder="Palonchiyev Pistonchi" />
-
-              <label style={{ display: 'block', marginBottom: 8, fontSize: 13, color: 'var(--text-muted)' }}>To'lov Bildirishnomasi Kanal ID</label>
-              <input value={settings.paymentChannelId || ''} onChange={e => setSettings({ ...settings, paymentChannelId: e.target.value })} placeholder="-1001234567890" />
-
-              <button className="btn btn-neon" onClick={saveSettings} style={{ marginTop: 10 }}>Saqlash</button>
-            </div>
-          </div>
-        )}
-
-        {/* ---- KANAL + TAB ---- */}
-        {activeTab === 'kanal' && (
-          <div>
-            <div className="section-title">Kanal Qo'shish</div>
-            <div className="inner-card">
-              <form onSubmit={addChannel}>
-                <input required placeholder="Kanal ID (masalan: -100...)" value={newChannel.id} onChange={e => setNewChannel({ ...newChannel, id: e.target.value })} />
-                <input required placeholder="Kanal Nomi" value={newChannel.title} onChange={e => setNewChannel({ ...newChannel, title: e.target.value })} />
-                <textarea placeholder="Tavsif (ixtiyoriy)" value={newChannel.description} onChange={e => setNewChannel({ ...newChannel, description: e.target.value })} />
-
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Kategoriya</label>
-                <select value={newChannel.category} onChange={e => setNewChannel({ ...newChannel, category: e.target.value })} style={{ marginBottom: 12 }}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input required type="number" placeholder="Reklama Narxi (UZS)" value={newChannel.adPrice} onChange={e => setNewChannel({ ...newChannel, adPrice: e.target.value })} />
-                  <input required type="number" placeholder="Obunachilar soni" value={newChannel.membersCount} onChange={e => setNewChannel({ ...newChannel, membersCount: e.target.value })} />
-                </div>
-                <input required type="number" placeholder="1 kunlik ko'rilish soni (View)" value={newChannel.dailyViews} onChange={e => setNewChannel({ ...newChannel, dailyViews: e.target.value })} />
-                <input placeholder="Kanal linki (masalan: https://t.me/...)" value={newChannel.inviteLink} onChange={e => setNewChannel({ ...newChannel, inviteLink: e.target.value })} />
-
-                <button className="btn btn-neon" type="submit" style={{ marginTop: 10 }}><Plus size={18} /> Qo'shish</button>
-              </form>
-            </div>
-
-            <div className="section-title" style={{ marginTop: 30 }}>Barcha Kanallar ({channels.length})</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {channels.map((ch: any) => (
-                <div key={ch.id} className="inner-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h3 style={{ fontSize: 16 }}>{ch.title}</h3>
-                    <p style={{ margin: '2px 0', fontSize: 12, color: 'var(--text-muted)' }}>{ch.category} · ID: {ch.id.slice(0, 14)}…</p>
-                    <p style={{ margin: '2px 0', fontSize: 12, color: 'var(--text-muted)' }}>View: {ch.dailyViews || 0}</p>
-                    <p style={{ margin: 0, color: 'var(--neon-orange)', fontWeight: 600 }}>{ch.adPrice.toLocaleString()} UZS</p>
+                  <div style={{ fontWeight: 'bold', fontSize: 16, color: 'var(--text-main)' }}>{c.channelName}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>
+                    Narx: {c.price.toLocaleString()} UZS | Sotuvchi: {c.seller?.firstName || c.sellerId}
                   </div>
-                  <button onClick={() => deleteChannel(ch.id)} style={{ background: 'transparent', border: 'none', color: 'var(--neon-red)', cursor: 'pointer', padding: 10 }}>
-                    <Trash2 size={20} />
-                  </button>
                 </div>
-              ))}
+                <button onClick={() => handleDeleteListing(c.id)} style={{ background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', color: 'var(--yt-red)', padding: 8, borderRadius: 8, cursor: 'pointer' }}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+            {listings.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>E'lonlar yo'q.</p>}
+          </div>
+        )}
+
+        {activeTab === 'users' && (
+          <div>
+            <h2 className="section-title">Mijozlar ({users.length})</h2>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                    <th style={{ padding: '8px 4px' }}>ID</th>
+                    <th style={{ padding: '8px 4px' }}>Ism</th>
+                    <th style={{ padding: '8px 4px' }}>Username</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '8px 4px', color: 'var(--text-muted)' }}>{u.id}</td>
+                      <td style={{ padding: '8px 4px', color: 'var(--text-main)' }}>{u.firstName || '-'}</td>
+                      <td style={{ padding: '8px 4px', color: 'var(--yt-light-red)' }}>{u.username ? `@${u.username}` : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
-        {/* ---- A'ZOLAR TAB ---- */}
-        {activeTab === 'foydalanuvchilar' && (
+        {activeTab === 'sales' && (
           <div>
-            <div className="section-title">
-              A'zolar Ro'yxati <span style={{ fontSize: 14, color: 'var(--neon-cyan)' }}>{users.length} ta</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {users.map((u: any) => (
-                <div key={u.id} className="inner-card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
-                  <div style={{
-                    width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
-                    background: 'linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta))',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 20, fontWeight: 'bold', color: 'white',
-                    boxShadow: '0 0 10px rgba(0,243,255,0.3)'
-                  }}>
-                    {(u.firstName || u.username || 'U')[0].toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h4 style={{ margin: 0, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.firstName || 'User'}</h4>
-                    <p style={{ margin: '2px 0', fontSize: 12, color: 'var(--text-muted)' }}>{u.username ? `@${u.username}` : `ID: ${u.id}`}</p>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>📞 {u.phoneNumber || 'Kiritilmagan'}</p>
-                  </div>
-                  <a href={u.username ? `https://t.me/${u.username}` : `tg://user?id=${u.id}`} target="_blank" rel="noreferrer"
-                    className="btn btn-neon" style={{ width: 'auto', padding: '8px 12px', fontSize: 12, borderRadius: 8, flexShrink: 0 }}>
-                    Profil
-                  </a>
+            <h2 className="section-title">Kanal Xaridlari Tarixi</h2>
+            {sales.map(s => (
+              <div key={s.id} className="inner-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>Kanal: {s.listing?.channelName || '-'}</span>
+                  <span style={{ color: s.status === 'COMPLETED' ? 'var(--success-green)' : 'var(--text-muted)', fontWeight: 'bold', fontSize: 12 }}>
+                    {s.status}
+                  </span>
                 </div>
-              ))}
-              {users.length === 0 && <p style={{ textAlign: 'center' }}>Hali foydalanuvchilar yo'q</p>}
-            </div>
-          </div>
-        )}
-
-        {/* ---- STATISTIKA TAB ---- */}
-        {activeTab === 'statistika' && (
-          <div>
-            <div className="section-title">Umumiy Statistika</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              <div className="inner-card" style={{ textAlign: 'center', padding: '16px 10px' }}>
-                <Users color="var(--neon-cyan)" size={28} style={{ marginBottom: 8 }} />
-                <div style={{ fontSize: 26, fontWeight: 800 }}>{stats.totalUsers || 0}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>A'zolar</div>
-              </div>
-              <div className="inner-card" style={{ textAlign: 'center', padding: '16px 10px' }}>
-                <Send color="var(--neon-green)" size={28} style={{ marginBottom: 8 }} />
-                <div style={{ fontSize: 26, fontWeight: 800 }}>{stats.activeAds || 0}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Faol Reklama</div>
-              </div>
-            </div>
-            <div className="inner-card" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <CreditCard color="var(--neon-orange)" size={32} />
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Umumiy Daromad</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--neon-orange)' }}>{(stats.revenue || 0).toLocaleString()} UZS</div>
-              </div>
-            </div>
-
-            <div className="section-title">Kanal bo'yicha</div>
-            {stats.channelStats?.map((ch: any) => (
-              <div key={ch.id} className="inner-card" style={{ marginBottom: 10 }}>
-                <h4 style={{ color: 'var(--neon-cyan)', marginBottom: 8 }}>{ch.title}</h4>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Jami daromad:</span>
-                  <strong>{ch.revenue.toLocaleString()} UZS</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>1 kunlik daromad:</span>
-                  <strong style={{ color: 'var(--neon-green)' }}>{(ch.revenue1d || 0).toLocaleString()} UZS</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>30 kunlik daromad:</span>
-                  <strong style={{ color: 'var(--neon-cyan)' }}>{(ch.revenue30d || 0).toLocaleString()} UZS</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Faol Reklama:</span>
-                  <strong>{ch.activeAds} ta</strong>
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                  Xaridor: {s.user?.firstName} (ID: {s.userId})<br/>
+                  Summa: {s.amount.toLocaleString()} UZS<br/>
+                  Sana: {new Date(s.createdAt).toLocaleString()}
                 </div>
               </div>
             ))}
-            {(!stats.channelStats || stats.channelStats.length === 0) && (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Kanal ma'lumotlari yo'q</p>
-            )}
+            {sales.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>Sotuvlar yo'q.</p>}
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div>
+            <h2 className="section-title">Tizim Sozlamalari</h2>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>Karta raqami (To'lovlar uchun)</label>
+              <input value={settings.cardNumber} onChange={e => setSettings({...settings, cardNumber: e.target.value})} placeholder="8600..." />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>Karta egasi ismi</label>
+              <input value={settings.cardOwnerName} onChange={e => setSettings({...settings, cardOwnerName: e.target.value})} placeholder="Jahongir Tojiboyev" />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>Bank to'lovlari keladigan kanal ID (Masalan: -100123...)</label>
+              <input value={settings.paymentChannelId} onChange={e => setSettings({...settings, paymentChannelId: e.target.value})} placeholder="-100..." />
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: 16, borderRadius: 12, marginBottom: 16 }}>
+              <h3 style={{ fontSize: 14, marginBottom: 12 }}>Moliyaviy Sozlamalar</h3>
+              
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>E'lon qo'shish narxi (UZS)</label>
+                <input type="number" value={settings.listingFee} onChange={e => setSettings({...settings, listingFee: Number(e.target.value)})} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>Sotuvdan komissiya foizi (%)</label>
+                <input type="number" value={settings.commissionRate} onChange={e => setSettings({...settings, commissionRate: Number(e.target.value)})} />
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: 16, borderRadius: 12, marginBottom: 20 }}>
+              <h3 style={{ fontSize: 14, marginBottom: 12 }}>Bildirishnomalar (Adminga)</h3>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 10 }}>
+                <input type="checkbox" checked={settings.notifyNewPayment} onChange={e => setSettings({...settings, notifyNewPayment: e.target.checked})} style={{ width: 18, height: 18, margin: 0 }} />
+                <span style={{ fontSize: 14 }}>Yangi to'lovlar haqida</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <input type="checkbox" checked={settings.notifyNewUser} onChange={e => setSettings({...settings, notifyNewUser: e.target.checked})} style={{ width: 18, height: 18, margin: 0 }} />
+                <span style={{ fontSize: 14 }}>Yangi foydalanuvchilar haqida</span>
+              </label>
+            </div>
+
+            <button className="btn btn-yt" onClick={handleSaveSettings}>
+              Saqlash
+            </button>
           </div>
         )}
       </div>

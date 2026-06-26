@@ -35,43 +35,4 @@ export function startCronJobs() {
       console.error('[CRON] Payment timeout error:', err);
     }
   }, 60 * 1000); // Every 1 minute
-
-  // 2. Auto-delete ads after 24 hours (every 1 minute)
-  setInterval(async () => {
-    try {
-      const now = new Date();
-      const expiredAds = await prisma.adTask.findMany({
-        where: {
-          status: 'POSTED',
-          deleteAt: { lte: now }
-        },
-        include: { channel: true, user: true }
-      });
-
-      for (const ad of expiredAds) {
-        try {
-          if (ad.messageIdInChannel) {
-            await bot.telegram.deleteMessage(ad.channelId, ad.messageIdInChannel);
-          }
-        } catch (err) {
-          console.error(`Failed to delete message ${ad.messageIdInChannel} in ${ad.channelId}:`, err);
-        }
-
-        await prisma.adTask.update({
-          where: { id: ad.id },
-          data: { status: 'DELETED' }
-        });
-
-        try {
-          await bot.telegram.sendMessage(
-            ad.userId,
-            `⏰ Sizning **${ad.channel.title}** kanaliga joylangan reklamangiz muddati (24 soat) tugadi va kanaldan o'chirildi. Hamkorlik uchun rahmat!`,
-            { parse_mode: 'Markdown' }
-          );
-        } catch (err) {}
-      }
-    } catch (err) {
-      console.error('[CRON] Ad deletion error:', err);
-    }
-  }, 60 * 1000); // Every 1 minute
 }

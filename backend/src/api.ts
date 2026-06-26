@@ -10,87 +10,78 @@ app.use(express.json());
 
 // --- Public Routes (Web App) ---
 
-// Get channels
-app.get('/api/channels', async (req, res) => {
+// Get active listings
+app.get('/api/listings', async (req, res) => {
   try {
-    const channels = await prisma.channel.findMany();
-    res.json(channels);
+    const listings = await prisma.listing.findMany({
+      where: { status: 'ACTIVE' }
+    });
+    res.json(listings);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Create payment
-app.post('/api/create-payment', async (req, res) => {
-  const { channelId, userId, username, firstName } = req.body;
+// Create purchase payment
+app.post('/api/create-purchase', async (req, res) => {
+  const { listingId, userId, username, firstName } = req.body;
   
   try {
-    const channel = await prisma.channel.findUnique({ where: { id: channelId } });
-    if (!channel) return res.status(404).json({ error: "Kanal topilmadi" });
+    const listing = await prisma.listing.findUnique({ where: { id: Number(listingId) } });
+    if (!listing) return res.status(404).json({ error: "E'lon topilmadi" });
 
-    // Ensure user exists in DB (upsert) before creating payment
+    // Ensure user exists
     await prisma.user.upsert({
       where: { id: String(userId) },
       update: { username, firstName },
       create: { id: String(userId), username, firstName }
     });
 
-    // Check if user has pending payment for this channel
     const existing = await prisma.payment.findFirst({
-      where: { userId: String(userId), channelId, status: 'PENDING' }
+      where: { userId: String(userId), listingId: listing.id, status: 'PENDING', type: 'PURCHASE' }
     });
 
     if (existing) {
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
       if (existing.createdAt < fifteenMinutesAgo) {
-        await prisma.payment.update({
-          where: { id: existing.id },
-          data: { status: 'CANCELLED' }
-        });
+        await prisma.payment.update({ where: { id: existing.id }, data: { status: 'CANCELLED' } });
       } else {
         return res.json({ payment: existing });
       }
     }
 
-    // Generate unique random suffix for exact amount matching
-    const pendingPayments = await prisma.payment.findMany({
-      where: { status: 'PENDING' },
-      select: { amount: true }
-    });
+    const pendingPayments = await prisma.payment.findMany({ where: { status: 'PENDING' }, select: { amount: true } });
     const busyAmounts = new Set(pendingPayments.map(p => p.amount));
 
     let randomSuffix = 0;
     for (let attempts = 0; attempts < 100; attempts++) {
       const testSuffix = Math.floor(Math.random() * 900) + 100;
-      const testAmount = channel.adPrice + testSuffix;
+      const testAmount = listing.price + testSuffix;
       if (!busyAmounts.has(testAmount)) {
         randomSuffix = testSuffix;
         break;
       }
     }
+    if (randomSuffix === 0) randomSuffix = Math.floor(Math.random() * 900) + 100;
 
-    if (randomSuffix === 0) {
-      randomSuffix = Math.floor(Math.random() * 900) + 100;
-    }
-
-    const finalAmount = channel.adPrice + randomSuffix;
+    const finalAmount = listing.price + randomSuffix;
 
     const payment = await prisma.payment.create({
       data: {
         userId: String(userId),
-        channelId,
+        listingId: listing.id,
         amount: finalAmount,
+        type: 'PURCHASE',
         status: 'PENDING'
       }
     });
 
     res.json({ payment });
   } catch (err) {
-    console.error("Payment Error:", err);
-    res.status(500).json({ error: "Failed to create payment" });
+    console.error("Purchase Payment Error:", err);
+    res.status(500).json({ error: "Failed to create purchase payment" });
   }
 });
-
 
 // Get settings for public view
 app.get('/api/settings', async (req, res) => {
@@ -99,14 +90,19 @@ app.get('/api/settings', async (req, res) => {
     if (!settings) {
       settings = await prisma.settings.create({ data: { id: 1 } });
     }
-    res.json({ cardNumber: settings.cardNumber, cardOwnerName: settings.cardOwnerName });
+    res.json({ 
+      cardNumber: settings.cardNumber, 
+      cardOwnerName: settings.cardOwnerName,
+      listingFee: settings.listingFee,
+      commissionRate: settings.commissionRate
+    });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Create channel payment
-app.post('/api/create-channel-payment', async (req, res) => {
+// Create listing payment
+app.post('/api/create-listing-payment', async (req, res) => {
   const { userId, username, firstName } = req.body;
   try {
     await prisma.user.upsert({
@@ -115,32 +111,29 @@ app.post('/api/create-channel-payment', async (req, res) => {
       create: { id: String(userId), username, firstName }
     });
 
+    const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+    const listingFee = settings?.listingFee || 20000;
+
     const existing = await prisma.payment.findFirst({
-      where: { userId: String(userId), type: 'CHANNEL_ADD', status: 'PENDING' }
+      where: { userId: String(userId), type: 'LISTING', status: 'PENDING' }
     });
 
     if (existing) {
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
       if (existing.createdAt < fifteenMinutesAgo) {
-        await prisma.payment.update({
-          where: { id: existing.id },
-          data: { status: 'CANCELLED' }
-        });
+        await prisma.payment.update({ where: { id: existing.id }, data: { status: 'CANCELLED' } });
       } else {
         return res.json({ payment: existing });
       }
     }
 
-    const pendingPayments = await prisma.payment.findMany({
-      where: { status: 'PENDING' },
-      select: { amount: true }
-    });
+    const pendingPayments = await prisma.payment.findMany({ where: { status: 'PENDING' }, select: { amount: true } });
     const busyAmounts = new Set(pendingPayments.map(p => p.amount));
 
     let randomSuffix = 0;
     for (let attempts = 0; attempts < 100; attempts++) {
       const testSuffix = Math.floor(Math.random() * 900) + 100;
-      const testAmount = 20000 + testSuffix;
+      const testAmount = listingFee + testSuffix;
       if (!busyAmounts.has(testAmount)) {
         randomSuffix = testSuffix;
         break;
@@ -151,37 +144,43 @@ app.post('/api/create-channel-payment', async (req, res) => {
     const payment = await prisma.payment.create({
       data: {
         userId: String(userId),
-        amount: 20000 + randomSuffix,
-        type: 'CHANNEL_ADD',
+        amount: listingFee + randomSuffix,
+        type: 'LISTING',
         status: 'PENDING'
       }
     });
     res.json({ payment });
   } catch (err) {
     console.error("Payment Error:", err);
-    res.status(500).json({ error: "Failed to create channel payment" });
+    res.status(500).json({ error: "Failed to create listing payment" });
   }
 });
 
-// Get user channels & balance
-app.get('/api/user/channels', async (req, res) => {
+// Get user listings & balance
+app.get('/api/user/listings', async (req, res) => {
   const userId = req.query.userId as string;
   if (!userId) return res.status(400).json({ error: "userId required" });
 
   try {
-    const channels = await prisma.channel.findMany({
-      where: { ownerId: userId }
+    const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+    const commissionRate = settings?.commissionRate ?? 10;
+    const sellerMultiplier = (100 - commissionRate) / 100;
+
+    const listings = await prisma.listing.findMany({
+      where: { sellerId: userId }
     });
 
-    const channelsWithRevenue = await Promise.all(channels.map(async ch => {
+    const listingsWithRevenue = await Promise.all(listings.map(async list => {
       const rev = await prisma.payment.aggregate({
-        where: { channelId: ch.id, type: 'AD', status: 'COMPLETED' },
+        where: { listingId: list.id, type: 'PURCHASE', status: 'COMPLETED' },
         _sum: { amount: true }
       });
-      return { ...ch, earned: (rev._sum.amount || 0) * 0.9 };
+      // Revenue is based on the original listing price, not the exact paid amount which has a suffix, but we can just use the sum of paid amounts to be exact, or we can use sum of paid amounts minus suffix.
+      // To be accurate, we'll just take the exact amount paid * multiplier. Suffix is tiny anyway.
+      return { ...list, earned: (rev._sum.amount || 0) * sellerMultiplier };
     }));
 
-    const totalEarned = channelsWithRevenue.reduce((sum, ch) => sum + ch.earned, 0);
+    const totalEarned = listingsWithRevenue.reduce((sum, list) => sum + list.earned, 0);
 
     const withdrawals = await prisma.withdrawal.aggregate({
       where: { userId, status: { in: ['PENDING', 'COMPLETED'] } },
@@ -191,13 +190,15 @@ app.get('/api/user/channels', async (req, res) => {
     const balance = totalEarned - totalWithdrawn;
 
     const unusedPayment = await prisma.payment.findFirst({
-      where: { userId, type: 'CHANNEL_ADD', status: 'COMPLETED' }
+      where: { userId, type: 'LISTING', status: 'COMPLETED' }
     });
 
     res.json({
-      channels: channelsWithRevenue,
+      listings: listingsWithRevenue,
       balance,
-      hasUnusedPayment: !!unusedPayment
+      hasUnusedPayment: !!unusedPayment,
+      listingFee: settings?.listingFee || 20000,
+      commissionRate
     });
   } catch (err) {
     console.error(err);
@@ -205,26 +206,24 @@ app.get('/api/user/channels', async (req, res) => {
   }
 });
 
-// Submit new channel
-app.post('/api/user/channels', async (req, res) => {
-  const { userId, id, title, description, category, adPrice, membersCount, dailyViews, inviteLink, cardNumber, cardOwnerName } = req.body;
+// Submit new listing
+app.post('/api/user/listings', async (req, res) => {
+  const { userId, channelName, description, niche, price, subscribers, monthlyViews, youtubeUrl, monetized, createdYear, cardNumber, cardOwnerName } = req.body;
   try {
     const unusedPayment = await prisma.payment.findFirst({
-      where: { userId: String(userId), type: 'CHANNEL_ADD', status: 'COMPLETED' },
+      where: { userId: String(userId), type: 'LISTING', status: 'COMPLETED' },
       orderBy: { createdAt: 'asc' }
     });
 
     if (!unusedPayment) return res.status(403).json({ error: "Sizda tolov qilingan limit yoq" });
 
-    const existingChannel = await prisma.channel.findUnique({ where: { id } });
-    if (existingChannel) return res.status(400).json({ error: "Kanal ID allaqachon mavjud" });
-
-    const channel = await prisma.channel.create({
+    const listing = await prisma.listing.create({
       data: {
-        id, title, description, category: category || 'Boshqa',
-        adPrice: Number(adPrice), membersCount: Number(membersCount),
-        dailyViews: Number(dailyViews || 0), inviteLink,
-        ownerId: String(userId), cardNumber, cardOwnerName
+        channelName, description, niche: niche || 'Boshqa',
+        price: Number(price), subscribers: Number(subscribers),
+        monthlyViews: Number(monthlyViews || 0), youtubeUrl,
+        monetized: Boolean(monetized), createdYear: createdYear ? Number(createdYear) : null,
+        sellerId: String(userId), cardNumber, cardOwnerName
       }
     });
 
@@ -233,10 +232,10 @@ app.post('/api/user/channels', async (req, res) => {
       data: { status: 'USED' }
     });
 
-    res.json(channel);
+    res.json(listing);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to add channel' });
+    res.status(500).json({ error: 'Failed to add listing' });
   }
 });
 
@@ -244,15 +243,19 @@ app.post('/api/user/channels', async (req, res) => {
 app.post('/api/user/withdraw', async (req, res) => {
   const { userId, amount } = req.body;
   try {
-    const channels = await prisma.channel.findMany({ where: { ownerId: String(userId) } });
+    const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+    const commissionRate = settings?.commissionRate ?? 10;
+    const sellerMultiplier = (100 - commissionRate) / 100;
+
+    const listings = await prisma.listing.findMany({ where: { sellerId: String(userId) } });
     
     let totalEarned = 0;
-    for (const ch of channels) {
+    for (const list of listings) {
       const rev = await prisma.payment.aggregate({
-        where: { channelId: ch.id, type: 'AD', status: 'COMPLETED' },
+        where: { listingId: list.id, type: 'PURCHASE', status: 'COMPLETED' },
         _sum: { amount: true }
       });
-      totalEarned += (rev._sum.amount || 0) * 0.9;
+      totalEarned += (rev._sum.amount || 0) * sellerMultiplier;
     }
 
     const withdrawals = await prisma.withdrawal.aggregate({
@@ -266,14 +269,14 @@ app.post('/api/user/withdraw', async (req, res) => {
     if (requestedAmount < 1000) return res.status(400).json({ error: "Minimal yechish summasi 1,000 UZS" });
     if (requestedAmount > balance) return res.status(400).json({ error: "Hisobingizda yetarli mablag' yo'q" });
 
-    const firstChannel = channels[0];
+    const firstListing = listings[0];
 
     const withdrawal = await prisma.withdrawal.create({
       data: {
         userId: String(userId),
         amount: requestedAmount,
-        cardNumber: firstChannel?.cardNumber,
-        cardOwnerName: firstChannel?.cardOwnerName
+        cardNumber: firstListing?.cardNumber,
+        cardOwnerName: firstListing?.cardOwnerName
       }
     });
 
@@ -283,7 +286,7 @@ app.post('/api/user/withdraw', async (req, res) => {
       bot.telegram.sendMessage(
         adminId,
         `💸 *Yangi pul yechish so'rovi!*\n\n` +
-        `Foydalanuvchi: ${user?.firstName || 'Mijoz'} (ID: ${userId})\n` +
+        `Sotuvchi: ${user?.firstName || 'Mijoz'} (ID: ${userId})\n` +
         `Summa: ${requestedAmount.toLocaleString()} UZS\n` +
         `Karta: \`${withdrawal.cardNumber || 'Kiritilmagan'}\` (${withdrawal.cardOwnerName || 'Kiritilmagan'})`,
         {
@@ -306,11 +309,9 @@ app.post('/api/user/withdraw', async (req, res) => {
 });
 
 
-
 // --- Admin Routes ---
-// Simplified admin auth: In production, you would validate the Telegram initData.
 const requireAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const initData = req.headers['x-telegram-init-data']; // Minimal check for this MVP
+  const initData = req.headers['x-telegram-init-data'];
   if (!initData && process.env.NODE_ENV === 'production') {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -320,83 +321,98 @@ const requireAdmin = (req: express.Request, res: express.Response, next: express
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
     const totalUsers = await prisma.user.count();
-    const totalRevenueObj = await prisma.payment.aggregate({
-      where: { status: 'COMPLETED' },
+    const purchaseRevenues = await prisma.payment.aggregate({
+      where: { status: 'COMPLETED', type: 'PURCHASE' },
       _sum: { amount: true }
     });
-    const activeAds = await prisma.adTask.count({ where: { status: 'POSTED' } });
+    const listingRevenues = await prisma.payment.aggregate({
+      where: { status: 'COMPLETED', type: 'LISTING' },
+      _sum: { amount: true }
+    });
+    
+    const activeListings = await prisma.listing.count({ where: { status: 'ACTIVE' } });
     
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Group payments by channel
-    const channels = await prisma.channel.findMany();
-    const channelStats = await Promise.all(channels.map(async (ch) => {
+    const listings = await prisma.listing.findMany();
+    const listingStats = await Promise.all(listings.map(async (list) => {
       const rev = await prisma.payment.aggregate({
-        where: { channelId: ch.id, status: 'COMPLETED' },
+        where: { listingId: list.id, status: 'COMPLETED', type: 'PURCHASE' },
         _sum: { amount: true }
       });
       const rev1d = await prisma.payment.aggregate({
-        where: { channelId: ch.id, status: 'COMPLETED', createdAt: { gte: oneDayAgo } },
+        where: { listingId: list.id, status: 'COMPLETED', type: 'PURCHASE', createdAt: { gte: oneDayAgo } },
         _sum: { amount: true }
       });
       const rev30d = await prisma.payment.aggregate({
-        where: { channelId: ch.id, status: 'COMPLETED', createdAt: { gte: thirtyDaysAgo } },
+        where: { listingId: list.id, status: 'COMPLETED', type: 'PURCHASE', createdAt: { gte: thirtyDaysAgo } },
         _sum: { amount: true }
       });
-      const active = await prisma.adTask.count({
-        where: { channelId: ch.id, status: 'POSTED' }
-      });
+      
       return {
-        id: ch.id,
-        title: ch.title,
+        id: list.id,
+        title: list.channelName,
         revenue: rev._sum.amount || 0,
         revenue1d: rev1d._sum.amount || 0,
-        revenue30d: rev30d._sum.amount || 0,
-        activeAds: active
+        revenue30d: rev30d._sum.amount || 0
       };
     }));
 
-    res.json({ totalUsers, revenue: totalRevenueObj._sum.amount || 0, activeAds, channelStats });
+    res.json({ 
+      totalUsers, 
+      purchaseRevenue: purchaseRevenues._sum.amount || 0, 
+      listingRevenue: listingRevenues._sum.amount || 0,
+      activeListings, 
+      listingStats 
+    });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// CRUD Channels
-app.post('/api/admin/channels', requireAdmin, async (req, res) => {
-  const { id, title, description, category, adPrice, membersCount, dailyViews, inviteLink } = req.body;
+// CRUD Listings
+app.get('/api/admin/listings', requireAdmin, async (req, res) => {
   try {
-    const channel = await prisma.channel.create({
-      data: { id, title, description, category: category || 'Boshqa', adPrice: Number(adPrice), membersCount: Number(membersCount), dailyViews: Number(dailyViews || 0), inviteLink }
-    });
-    res.json(channel);
+    const listings = await prisma.listing.findMany({ include: { seller: true } });
+    res.json(listings);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to add channel' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-app.delete('/api/admin/channels/:id', requireAdmin, async (req, res) => {
+app.post('/api/admin/listings', requireAdmin, async (req, res) => {
+  const { channelName, description, niche, price, subscribers, monthlyViews, youtubeUrl, monetized, status } = req.body;
   try {
-    const channelId = req.params.id as string;
-    await prisma.adTask.deleteMany({ where: { channelId } });
-    await prisma.payment.deleteMany({ where: { channelId } });
-    await prisma.channel.delete({ where: { id: channelId } });
+    const listing = await prisma.listing.create({
+      data: { channelName, description, niche: niche || 'Boshqa', price: Number(price), subscribers: Number(subscribers), monthlyViews: Number(monthlyViews || 0), youtubeUrl, monetized: Boolean(monetized), status: status || 'ACTIVE' }
+    });
+    res.json(listing);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add listing' });
+  }
+});
+
+app.delete('/api/admin/listings/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    await prisma.payment.deleteMany({ where: { listingId: id } });
+    await prisma.listing.delete({ where: { id } });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete channel' });
+    res.status(500).json({ error: 'Failed to delete listing' });
   }
 });
 
 // Update Settings
 app.post('/api/admin/settings', requireAdmin, async (req, res) => {
-  const { cardNumber, cardOwnerName, paymentChannelId, notifyNewPayment, notifyNewUser, notifyAdPosted } = req.body;
+  const { cardNumber, cardOwnerName, paymentChannelId, notifyNewPayment, notifyNewUser, listingFee, commissionRate } = req.body;
   try {
     const settings = await prisma.settings.upsert({
       where: { id: 1 },
-      update: { cardNumber, cardOwnerName, paymentChannelId, notifyNewPayment, notifyNewUser, notifyAdPosted },
-      create: { id: 1, cardNumber, cardOwnerName, paymentChannelId, notifyNewPayment, notifyNewUser, notifyAdPosted }
+      update: { cardNumber, cardOwnerName, paymentChannelId, notifyNewPayment, notifyNewUser, listingFee: Number(listingFee), commissionRate: Number(commissionRate) },
+      create: { id: 1, cardNumber, cardOwnerName, paymentChannelId, notifyNewPayment, notifyNewUser, listingFee: Number(listingFee), commissionRate: Number(commissionRate) }
     });
     res.json(settings);
   } catch (err) {
@@ -429,16 +445,17 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   }
 });
 
-// Get AdTasks History
-app.get('/api/admin/ads', requireAdmin, async (req, res) => {
+// Get Purchases History
+app.get('/api/admin/sales', requireAdmin, async (req, res) => {
   try {
-    const ads = await prisma.adTask.findMany({
-      include: { user: true, channel: true },
+    const sales = await prisma.payment.findMany({
+      where: { type: 'PURCHASE' },
+      include: { user: true, listing: true },
       orderBy: { createdAt: 'desc' }
     });
-    res.json(ads);
+    res.json(sales);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to get ads' });
+    res.status(500).json({ error: 'Failed to get sales' });
   }
 });
 

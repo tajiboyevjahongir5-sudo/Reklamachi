@@ -15,64 +15,46 @@ model User {
   createdAt DateTime @default(now())
   
   payments  Payment[]
-  adTasks   AdTask[]
-  ownedChannels Channel[] @relation("ChannelOwner")
+  listings  Listing[] @relation("ListingSeller")
   withdrawals Withdrawal[]
 }
 
-model Channel {
-  id          String   @id // Telegram Channel ID
-  title       String
-  description String?
-  category    String   @default("Boshqa")
-  adPrice     Float
-  membersCount Int     @default(0)
-  dailyViews  Int      @default(0)
-  inviteLink  String?
-  createdAt   DateTime @default(now())
+model Listing {
+  id           Int      @id @default(autoincrement())
+  channelName  String
+  description  String?
+  niche        String   @default("Boshqa")
+  price        Float
+  subscribers  Int      @default(0)
+  monthlyViews Int      @default(0)
+  youtubeUrl   String?
+  monetized    Boolean  @default(false)
+  createdYear  Int?
+  imageUrl     String?  // Optional screenshot URL
   
-  ownerId     String?
-  owner       User?    @relation("ChannelOwner", fields: [ownerId], references: [id])
-  cardNumber  String?
+  status       String   @default("ACTIVE") // ACTIVE, SOLD, HIDDEN
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  sellerId     String?
+  seller       User?    @relation("ListingSeller", fields: [sellerId], references: [id])
+  cardNumber   String?
   cardOwnerName String?
 
-  payments    Payment[]
-  adTasks     AdTask[]
+  payments     Payment[]
 }
 
 model Payment {
   id        Int      @id @default(autoincrement())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  channelId String?
-  channel   Channel?  @relation(fields: [channelId], references: [id])
+  listingId Int?
+  listing   Listing? @relation(fields: [listingId], references: [id])
   amount    Float
   status    String   @default("PENDING") // PENDING, COMPLETED, CANCELLED, USED
-  type      String   @default("AD") // AD, CHANNEL_ADD
+  type      String   @default("PURCHASE") // PURCHASE, LISTING
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  adTasks   AdTask[]
-}
-
-model AdTask {
-  id                 Int      @id @default(autoincrement())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id])
-  channelId          String
-  channel            Channel  @relation(fields: [channelId], references: [id])
-  paymentId          Int?
-  payment            Payment? @relation(fields: [paymentId], references: [id])
-  
-  status             String   @default("WAITING_CONTENT") // WAITING_CONTENT, POSTED, DELETED
-  
-  messageIdInChannel Int?     // Message ID returned by Telegram when posted to the channel
-  
-  postedAt           DateTime?
-  deleteAt           DateTime?
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
 }
 
 model Settings {
@@ -82,7 +64,10 @@ model Settings {
   paymentChannelId   String   @default("") // Channel ID where bank notifications are forwarded
   notifyNewPayment   Boolean  @default(true)
   notifyNewUser      Boolean  @default(true)
-  notifyAdPosted     Boolean  @default(true)
+  
+  // New dynamic pricing settings
+  listingFee         Float    @default(20000)
+  commissionRate     Float    @default(10) // 10%
 }
 
 model Withdrawal {

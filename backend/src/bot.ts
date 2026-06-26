@@ -45,9 +45,9 @@ bot.start(async (ctx) => {
   const webAppUrl = getWebAppUrl();
 
   await ctx.reply(
-    '🌟 Salom! Reklamachi botga xush kelibsiz.\nKanalimizda reklama joylashtirish uchun quyidagi tugmani bosing:',
+    '▶️ Salom! YouTube Kanal Savdosi platformasiga xush kelibsiz.\n\nKatalogdagi kanallarni ko\'rish yoki o\'z kanalingizni sotish uchun quyidagi tugmani bosing:',
     Markup.inlineKeyboard([
-      Markup.button.webApp('📢 Reklama berish', webAppUrl)
+      Markup.button.webApp('🔥 Kanal Bozori', webAppUrl)
     ])
   );
 });
@@ -88,7 +88,7 @@ bot.on('channel_post', async (ctx) => {
   
   const settings = await prisma.settings.findUnique({ where: { id: 1 } });
   if (!settings || settings.paymentChannelId !== channelId) {
-    return; // Not the payment notification channel
+    return;
   }
 
   const text = (ctx.channelPost as any).text || "";
@@ -96,7 +96,7 @@ bot.on('channel_post', async (ctx) => {
 
   const pendingPayments = await prisma.payment.findMany({ 
     where: { status: 'PENDING' },
-    include: { channel: true }
+    include: { listing: true }
   });
 
   const extractedNumbers = extractNumbers(text);
@@ -121,10 +121,10 @@ bot.on('channel_post', async (ctx) => {
         data: { status: 'COMPLETED' }
       });
 
-      if (payment.type === 'CHANNEL_ADD') {
+      if (payment.type === 'LISTING') {
         await bot.telegram.sendMessage(
           payment.userId, 
-          `✅ Kanal qo'shish uchun to'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nIltimos, Web App ga kirib kanalingiz ma'lumotlarini to'ldiring.`,
+          `✅ YouTube kanal e'lon qilish uchun to'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nIltimos, Ilovaga kirib kanalingiz ma'lumotlarini to'ldiring.`,
           { parse_mode: 'Markdown' }
         );
         
@@ -132,24 +132,17 @@ bot.on('channel_post', async (ctx) => {
         if (settings?.notifyNewPayment && adminId) {
           bot.telegram.sendMessage(
             adminId, 
-            `💰 *Yangi Kanal Qo'shish To'lovi Tasdiqlandi!*\nSumma: ${payment.amount.toLocaleString()} UZS\nMijoz ID: ${payment.userId}`, 
+            `💰 *Yangi E'lon To'lovi Tasdiqlandi!*\nSumma: ${payment.amount.toLocaleString()} UZS\nMijoz ID: ${payment.userId}`, 
             { parse_mode: 'Markdown' }
           ).catch(() => null);
         }
-      } else {
-        // Create an AdTask WAITING_CONTENT
-        await prisma.adTask.create({
-          data: {
-            userId: payment.userId,
-            channelId: payment.channelId as string,
-            paymentId: payment.id,
-            status: 'WAITING_CONTENT'
-          }
-        });
-
+      } else if (payment.type === 'PURCHASE') {
+        // Change listing status to SOLD? Or leave it ACTIVE until admin confirms transfer?
+        // Let's leave it ACTIVE and let admin manage it, but notify both.
+        
         await bot.telegram.sendMessage(
           payment.userId, 
-          `✅ To'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nIltimos, **${payment.channel?.title}** kanaliga joylanishi kerak bo'lgan reklama xabarini (matn, rasm yoki video) menga yuboring.`,
+          `✅ Kanal xaridi uchun to'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nTez orada Admin siz bilan kanalni o'tkazib berish bo'yicha bog'lanadi.`,
           { parse_mode: 'Markdown' }
         );
 
@@ -157,69 +150,13 @@ bot.on('channel_post', async (ctx) => {
         if (settings?.notifyNewPayment && adminId) {
           bot.telegram.sendMessage(
             adminId, 
-            `💰 *Yangi To'lov Tasdiqlandi!*\nKanal: ${payment.channel?.title}\nSumma: ${payment.amount.toLocaleString()} UZS\nMijoz ID: ${payment.userId}`, 
+            `💰 *Yangi Kanal Xaridi!*\nKanal: ${payment.listing?.channelName}\nSumma: ${payment.amount.toLocaleString()} UZS\nXaridor ID: ${payment.userId}`, 
             { parse_mode: 'Markdown' }
           ).catch(() => null);
         }
       }
     } catch (err) {
       console.error("Auto confirmation error for payment ID " + payment.id + ":", err);
-    }
-  }
-});
-
-// Listener for user ad content submission
-bot.on('message', async (ctx) => {
-  if (ctx.chat.type !== 'private') return;
-  const userId = ctx.from.id.toString();
-
-  const waitingTask = await prisma.adTask.findFirst({
-    where: {
-      userId,
-      status: 'WAITING_CONTENT'
-    },
-    include: { channel: true },
-    orderBy: { createdAt: 'asc' }
-  });
-
-  if (!waitingTask) return; // User is not expected to send an ad right now
-
-  try {
-    // Copy message to target channel
-    const msg = await bot.telegram.copyMessage(waitingTask.channelId, ctx.chat.id, ctx.message.message_id);
-    
-    // Update AdTask
-    const postedAt = new Date();
-    const deleteAt = new Date(postedAt.getTime() + 24 * 60 * 60 * 1000); // 24 hours later
-
-    await prisma.adTask.update({
-      where: { id: waitingTask.id },
-      data: {
-        status: 'POSTED',
-        messageIdInChannel: msg.message_id,
-        postedAt,
-        deleteAt
-      }
-    });
-
-    await ctx.reply(`✅ Reklamangiz **${waitingTask.channel.title}** kanaliga muvaffaqiyatli joylandi!\n\nU 24 soatdan so'ng avtomatik o'chiriladi.`, { parse_mode: 'Markdown' });
-
-    const settings = await prisma.settings.findUnique({ where: { id: 1 } });
-    const adminId = process.env.ADMIN_ID;
-    if (settings?.notifyAdPosted && adminId) {
-      bot.telegram.sendMessage(
-        adminId,
-        `📢 *Yangi Reklama Joylandi!*\nKanal: ${waitingTask.channel.title}\nMijoz: ${ctx.from.first_name} ${ctx.from.username ? `(@${ctx.from.username})` : ''}\nMijoz ID: ${userId}`,
-        { parse_mode: 'Markdown' }
-      ).catch(() => null);
-    }
-
-  } catch (err: any) {
-    console.error("Error copying ad message:", err);
-    if (err.description && err.description.includes('chat not found')) {
-      await ctx.reply(`❌ Xatolik yuz berdi. Bot **${waitingTask.channel.title}** kanaliga post joylash uchun admin huquqiga ega emas. Iltimos, admin bilan bog'laning.`, { parse_mode: 'Markdown' });
-    } else {
-      await ctx.reply(`❌ Xatolik yuz berdi: ${err.message}`);
     }
   }
 });
@@ -248,7 +185,7 @@ bot.action(/withdraw_approve_(\d+)/, async (ctx) => {
 
     await bot.telegram.sendMessage(
       withdrawal.userId,
-      `✅ Hisobingiz (${withdrawal.amount.toLocaleString()} UZS) ko'rsatilgan karta raqamiga o'tkazib berildi.\n\nDaromadingiz bardavom bo'lsin, bizning telegram botimizni tanlaganingiz uchun rahmat! 🌟`,
+      `✅ Hisobingiz (${withdrawal.amount.toLocaleString()} UZS) ko'rsatilgan karta raqamiga o'tkazib berildi.\n\nDaromadingiz bardavom bo'lsin, platformamizni tanlaganingiz uchun rahmat! 🌟`,
       { parse_mode: 'Markdown' }
     );
   } catch (err) {
