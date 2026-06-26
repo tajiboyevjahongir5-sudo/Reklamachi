@@ -1,6 +1,10 @@
-import { useState, useEffect } from 'react';
+import os
+
+filepath = r'C:\Users\user\.gemini\antigravity\scratch\reklamachi_bot\frontend\src\AdminApp.tsx'
+
+content = """import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings, Users, Activity, Trash2, MonitorPlay, TrendingUp, ShoppingCart, ShieldCheck, CreditCard, Bell } from 'lucide-react';
+import { Settings, Users, Activity, CheckCircle2, Trash2, MonitorPlay, TrendingUp, ShoppingCart, ShieldCheck, CreditCard, Bell } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -330,3 +334,9 @@ export default function AdminApp() {
     </div>
   );
 }
+"""
+
+with open(filepath, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("AdminApp.tsx rewritten successfully")
