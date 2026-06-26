@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import { Users, CheckCircle2, Eye, Search, Plus, X, Wallet, ArrowDownCircle, TrendingUp, MonitorPlay, Info, ShoppingCart, Calendar, DollarSign, XCircle } from 'lucide-react';
+import { Users, CheckCircle2, Eye, Search, Plus, X, Wallet, ArrowDownCircle, TrendingUp, MonitorPlay, Info, ShoppingCart, Calendar, DollarSign, XCircle, Gamepad2, Camera, Layers, Clapperboard, Music, Briefcase, Trophy, Cpu, Sparkles } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -10,15 +10,15 @@ const userId = tgUser?.id || MOCK_USER_ID;
 
 const CATEGORIES = [
   { name: 'Hammasi', icon: null },
-  { name: 'Gaming', icon: '🎮' },
-  { name: 'Vlog', icon: '📷' },
-  { name: "Ta'lim", icon: '📚' },
-  { name: 'Kino', icon: '🎬' },
-  { name: 'Musiqa', icon: '🎵' },
-  { name: 'Biznes', icon: '💼' },
-  { name: 'Sport', icon: '⚽' },
-  { name: 'Texnologiya', icon: '💻' },
-  { name: 'Boshqa', icon: '✨' }
+  { name: 'Gaming', icon: <Gamepad2 size={16} color="#8b5cf6" /> },
+  { name: 'Vlog', icon: <Camera size={16} color="#a78bfa" /> },
+  { name: "Ta'lim", icon: <Layers size={16} color="#34d399" /> },
+  { name: 'Kino', icon: <Clapperboard size={16} color="#6366f1" /> },
+  { name: 'Musiqa', icon: <Music size={16} color="#c084fc" /> },
+  { name: 'Biznes', icon: <Briefcase size={16} color="#fbbf24" /> },
+  { name: 'Sport', icon: <Trophy size={16} color="#f87171" /> },
+  { name: 'Texnologiya', icon: <Cpu size={16} color="#60a5fa" /> },
+  { name: 'Boshqa', icon: <Sparkles size={16} color="#f472b6" /> }
 ];
 
 type ModalStep = 'main' | 'payment' | 'form' | 'withdraw' | 'withdraw-success';
@@ -514,7 +514,7 @@ export default function UserApp() {
             onClick={() => setActiveCategory(cat.name)} 
             className={`category-pill ${activeCategory === cat.name ? 'active' : ''}`}
           >
-            {cat.icon && <span>{cat.icon}</span>}
+            {cat.icon && <span style={{ display: 'flex', alignItems: 'center', filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.2))' }}>{cat.icon}</span>}
             {cat.name}
           </button>
         ))}
