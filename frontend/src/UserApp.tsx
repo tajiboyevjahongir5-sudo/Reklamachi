@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import { Users, CheckCircle2, Eye, Info, Search, Plus, X, Wallet, ArrowDownCircle, TrendingUp, MonitorPlay, Check } from 'lucide-react';
+import { Users, CheckCircle2, Eye, Search, Plus, X, Wallet, ArrowDownCircle, TrendingUp, MonitorPlay, Info, ShoppingCart, Calendar, DollarSign, XCircle } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -8,7 +8,18 @@ const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
 const MOCK_USER_ID = '123456789';
 const userId = tgUser?.id || MOCK_USER_ID;
 
-const CATEGORIES = ['Hammasi', 'Gaming', 'Vlog', "Ta'lim", 'Kino', 'Musiqa', 'Biznes', 'Sport', 'Texnologiya', 'Boshqa'];
+const CATEGORIES = [
+  { name: 'Hammasi', icon: null },
+  { name: 'Gaming', icon: '🎮' },
+  { name: 'Vlog', icon: '📷' },
+  { name: "Ta'lim", icon: '📚' },
+  { name: 'Kino', icon: '🎬' },
+  { name: 'Musiqa', icon: '🎵' },
+  { name: 'Biznes', icon: '💼' },
+  { name: 'Sport', icon: '⚽' },
+  { name: 'Texnologiya', icon: '💻' },
+  { name: 'Boshqa', icon: '✨' }
+];
 
 type ModalStep = 'main' | 'payment' | 'form' | 'withdraw' | 'withdraw-success';
 
@@ -52,6 +63,7 @@ export default function UserApp() {
     if ((window as any).Telegram?.WebApp) {
       (window as any).Telegram.WebApp.ready();
       (window as any).Telegram.WebApp.expand();
+      (window as any).Telegram.WebApp.setHeaderColor('#0f1015');
     }
 
     Promise.all([
@@ -198,12 +210,19 @@ export default function UserApp() {
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', borderRadius: 10,
-    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-    color: 'var(--text-main)', fontSize: 13, fontFamily: 'Inter, sans-serif',
-    outline: 'none', boxSizing: 'border-box'
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(0) + 'k+';
+    return num.toString();
   };
+
+  const getFirstLetter = (name: string) => name ? name.charAt(0).toUpperCase() : 'C';
+  const getIconColor = (name: string) => {
+    const colors = ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#1abc9c', '#e67e22'];
+    const index = name.length % colors.length;
+    return colors[index];
+  };
+
   const labelStyle: React.CSSProperties = {
     display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600
   };
@@ -255,8 +274,8 @@ export default function UserApp() {
               <button
                 onClick={() => { setModalStep('withdraw'); setWithdrawAmount(''); }}
                 style={{
-                  background: 'rgba(0,200,81,0.1)', border: '1px solid rgba(0,200,81,0.3)',
-                  color: 'var(--neon-green)', borderRadius: 10, padding: '8px 14px',
+                  background: 'rgba(46, 204, 113, 0.1)', border: '1px solid rgba(46, 204, 113, 0.3)',
+                  color: 'var(--success-green)', borderRadius: 10, padding: '8px 14px',
                   fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5
                 }}
               >
@@ -277,7 +296,7 @@ export default function UserApp() {
                     <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>Narx: {(list.price || 0).toLocaleString()} UZS</p>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--neon-green)', fontSize: 14, fontWeight: 700 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--success-green)', fontSize: 14, fontWeight: 700 }}>
                       <TrendingUp size={13} /> {Math.floor(list.earned || 0).toLocaleString()}
                     </div>
                   </div>
@@ -307,12 +326,8 @@ export default function UserApp() {
             <button
               onClick={handleListingPayment}
               disabled={buying}
-              style={{
-                width: '100%', padding: 13, borderRadius: 14,
-                background: 'var(--yt-red)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 14,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                opacity: buying ? 0.6 : 1
-              }}
+              className="btn-gold"
+              style={{ width: '100%', padding: 14, fontSize: 15, justifyContent: 'center', opacity: buying ? 0.6 : 1 }}
             >
               <Plus size={18} /> E'lon joylash ({(settings.listingFee || 20000).toLocaleString()} so'm)
             </button>
@@ -321,6 +336,9 @@ export default function UserApp() {
       );
     }
 
+    // Other modal steps remain similar but with updated colors
+    // ... (omitting full repetition of form code for brevity, maintaining structure)
+    // For completion, I will output the rest of the modal exactly but styled appropriately.
     if (modalStep === 'payment' && listingPaymentData) {
       return (
         <>
@@ -328,20 +346,15 @@ export default function UserApp() {
             <CheckCircle2 size={48} color="var(--success-green)" style={{ display: 'block', margin: '0 auto 8px', filter: 'drop-shadow(0 0 10px var(--success-green))' }} />
             <h2 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--text-main)' }}>E'lon to'lovi</h2>
           </div>
-
           <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 16, marginBottom: 12, textAlign: 'center' }}>
             <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--text-muted)' }}>Karta raqami (bosing — nusxalanadi):</p>
-            <h2
-              style={{ margin: '0 0 6px', fontFamily: 'monospace', fontSize: 20, letterSpacing: 2, cursor: 'pointer', color: 'var(--text-main)' }}
-              onClick={() => { navigator.clipboard.writeText(settings.cardNumber); alert('Karta raqami nusxalandi!'); }}
-            >
+            <h2 style={{ margin: '0 0 6px', fontFamily: 'monospace', fontSize: 20, letterSpacing: 2, cursor: 'pointer', color: 'var(--text-main)' }} onClick={() => { navigator.clipboard.writeText(settings.cardNumber); alert('Karta raqami nusxalandi!'); }}>
               {settings.cardNumber || '—'}
             </h2>
             {settings.cardOwnerName && <p style={{ margin: 0, color: 'var(--text-main)', fontSize: 14 }}>{settings.cardOwnerName}</p>}
           </div>
-
           <div style={{ background: 'rgba(255,0,0,0.1)', border: '1px solid rgba(255,0,0,0.3)', borderRadius: 14, padding: 14, marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--yt-light-red)', fontWeight: 700, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--yt-red)', fontWeight: 700, marginBottom: 6 }}>
               <Info size={16} /> DIQQAT!
             </div>
             <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-main)', lineHeight: 1.5 }}>
@@ -351,11 +364,7 @@ export default function UserApp() {
               {listingPaymentData.amount.toLocaleString()} UZS
             </div>
           </div>
-
-          <button
-            onClick={() => setShowAddModal(false)}
-            style={{ width: '100%', padding: 13, borderRadius: 14, background: 'var(--text-main)', border: 'none', color: '#000', fontWeight: 800, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-          >
+          <button onClick={() => setShowAddModal(false)} style={{ width: '100%', padding: 13, borderRadius: 14, background: 'var(--text-main)', border: 'none', color: '#000', fontWeight: 800, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <CheckCircle2 size={18} /> To'lov qildim — Yopish
           </button>
         </>
@@ -366,45 +375,44 @@ export default function UserApp() {
       return (
         <>
           <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text-main)', textAlign: 'center' }}>Kanal ma'lumotlari</h2>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
             <div>
               <label style={labelStyle}>YouTube Kanal Nomi *</label>
-              <input style={inputStyle} value={formName} onChange={e => setFormName(e.target.value)} placeholder="Kanal nomi" />
+              <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="Kanal nomi" />
             </div>
             <div>
               <label style={labelStyle}>Tavsif</label>
-              <textarea style={{...inputStyle, height: 80, resize: 'none'}} value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="Nimalar haqida ekanligi..." />
+              <textarea style={{height: 80, resize: 'none'}} value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="Nimalar haqida ekanligi..." />
             </div>
             <div>
               <label style={labelStyle}>Niche (Kategoriya)</label>
-              <select style={{ ...inputStyle, appearance: 'auto' }} value={formCategory} onChange={e => setFormCategory(e.target.value)}>
-                {CATEGORIES.filter(c => c !== 'Hammasi').map(c => <option key={c} value={c}>{c}</option>)}
+              <select value={formCategory} onChange={e => setFormCategory(e.target.value)}>
+                {CATEGORIES.filter(c => c.name !== 'Hammasi').map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Sotish narxi (UZS) *</label>
-                <input style={inputStyle} type="number" value={formPrice} onChange={e => setFormPrice(e.target.value)} placeholder="Masalan: 500000" />
+                <input type="number" value={formPrice} onChange={e => setFormPrice(e.target.value)} placeholder="Masalan: 500000" />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Obunachilar *</label>
-                <input style={inputStyle} type="number" value={formSubs} onChange={e => setFormSubs(e.target.value)} placeholder="10000" />
+                <input type="number" value={formSubs} onChange={e => setFormSubs(e.target.value)} placeholder="10000" />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Oylik ko'rishlar</label>
-                <input style={inputStyle} type="number" value={formViews} onChange={e => setFormViews(e.target.value)} placeholder="50000" />
+                <input type="number" value={formViews} onChange={e => setFormViews(e.target.value)} placeholder="50000" />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Yaratilgan yil</label>
-                <input style={inputStyle} type="number" value={formYear} onChange={e => setFormYear(e.target.value)} placeholder="2020" />
+                <input type="number" value={formYear} onChange={e => setFormYear(e.target.value)} placeholder="2020" />
               </div>
             </div>
             <div>
               <label style={labelStyle}>YouTube Linki</label>
-              <input style={inputStyle} value={formUrl} onChange={e => setFormUrl(e.target.value)} placeholder="https://youtube.com/..." />
+              <input value={formUrl} onChange={e => setFormUrl(e.target.value)} placeholder="https://youtube.com/..." />
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '10px 0' }}>
               <input type="checkbox" checked={formMonetized} onChange={e => setFormMonetized(e.target.checked)} style={{ width: 18, height: 18, margin: 0 }} />
@@ -413,18 +421,17 @@ export default function UserApp() {
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Karta raqami *</label>
-                <input style={inputStyle} value={formCard} onChange={e => setFormCard(e.target.value)} placeholder="8600..." />
+                <input value={formCard} onChange={e => setFormCard(e.target.value)} placeholder="8600..." />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Karta egasi *</label>
-                <input style={inputStyle} value={formCardName} onChange={e => setFormCardName(e.target.value)} placeholder="Ism Familiya" />
+                <input value={formCardName} onChange={e => setFormCardName(e.target.value)} placeholder="Ism Familiya" />
               </div>
             </div>
           </div>
-
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button onClick={() => setModalStep('main')} style={{ flex: 1, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-main)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Ortga</button>
-            <button onClick={handleSubmitListing} disabled={submitting} style={{ flex: 2, padding: 12, borderRadius: 12, background: 'var(--yt-red)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: submitting ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <button onClick={handleSubmitListing} disabled={submitting} className="btn-gold" style={{ flex: 2, padding: 12, justifyContent: 'center', opacity: submitting ? 0.6 : 1 }}>
               <CheckCircle2 size={16} /> {submitting ? 'Saqlanmoqda...' : 'E\'lonni chiqarish'}
             </button>
           </div>
@@ -440,13 +447,11 @@ export default function UserApp() {
             <h2 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--text-main)' }}>Pul yechish</h2>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Mavjud balans: <strong style={{ color: 'var(--text-main)' }}>{Math.floor(myBalance).toLocaleString()} UZS</strong></p>
           </div>
-
           <div style={{ marginBottom: 16 }}>
             <label style={labelStyle}>Yechish summasi (UZS)</label>
-            <input style={{ ...inputStyle, fontSize: 20, textAlign: 'center', fontWeight: 700, padding: '14px 12px' }} type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} placeholder="0" />
+            <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} placeholder="0" style={{ fontSize: 20, textAlign: 'center', fontWeight: 700 }} />
             <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, textAlign: 'center' }}>Minimal: 1,000 UZS</p>
           </div>
-
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setModalStep('main')} style={{ flex: 1, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-main)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Ortga</button>
             <button onClick={handleWithdraw} disabled={withdrawing} style={{ flex: 2, padding: 12, borderRadius: 12, background: 'var(--success-green)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: withdrawing ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
@@ -463,7 +468,7 @@ export default function UserApp() {
           <CheckCircle2 size={56} color="var(--success-green)" style={{ display: 'block', margin: '0 auto 12px', filter: 'drop-shadow(0 0 12px var(--success-green))' }} />
           <h2 style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--text-main)' }}>So'rov qabul qilindi!</h2>
           <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>Pul hisobingizga <strong>24 soat ichida</strong> o'tkaziladi.</p>
-          <button onClick={() => setModalStep('main')} style={{ padding: '12px 24px', borderRadius: 12, background: 'var(--text-main)', border: 'none', color: '#000', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>Tushunarli</button>
+          <button onClick={() => setModalStep('main')} className="btn-gold" style={{ width: '100%', justifyContent: 'center', padding: 12 }}>Tushunarli</button>
         </div>
       );
     }
@@ -472,76 +477,106 @@ export default function UserApp() {
   };
 
   return (
-    <div style={{ paddingBottom: 30, maxWidth: 480, margin: '0 auto' }}>
-      <div style={{ padding: '16px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <MonitorPlay size={32} color="var(--yt-red)" />
+    <>
+      <div className="header-container">
+        <div className="logo-wrapper">
+          <div className="logo-icon-box">
+            <MonitorPlay size={24} color="var(--yt-red)" strokeWidth={2.5} />
+          </div>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>
-              Channel<span style={{ color: 'var(--yt-red)' }}>Bozor</span>
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: 11, margin: 0 }}>YouTube kanallar savdosi</p>
+            <h1 className="logo-title">Channel<span>Bozor</span></h1>
+            <p className="logo-subtitle">YouTube kanallar savdosi</p>
           </div>
         </div>
-        <button onClick={openAddModal} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'var(--text-main)', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-          <Plus size={16} /> Sotish
-        </button>
-      </div>
-
-      <div style={{ padding: '0 16px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '9px 13px' }}>
-          <Search size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />
-          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Kanal qidirish..." style={{ background: 'transparent', border: 'none', outline: 'none', margin: 0, color: 'var(--text-main)', fontSize: 13, width: '100%', fontFamily: 'Inter, sans-serif' }} />
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <button onClick={openAddModal} className="btn-gold">
+            <Plus size={16} strokeWidth={3} /> Sotish
+          </button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, padding: '0 16px 14px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-        {CATEGORIES.map(cat => {
-          const isActive = activeCategory === cat;
-          return (
-            <button key={cat} onClick={() => setActiveCategory(cat)} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: isActive ? 600 : 500, border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', background: isActive ? 'var(--text-main)' : 'rgba(255,255,255,0.08)', color: isActive ? '#000' : 'var(--text-muted)' }}>{cat}</button>
-          );
-        })}
+      <div className="search-wrapper">
+        <Search size={18} color="var(--text-muted)" />
+        <input 
+          className="search-input"
+          value={searchQuery} 
+          onChange={e => setSearchQuery(e.target.value)} 
+          placeholder="Kanal qidirish..." 
+        />
       </div>
 
-      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {filteredListings.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 40 }}>Kanal topilmadi</p>}
+      <div className="categories-scroll">
+        {CATEGORIES.map(cat => (
+          <button 
+            key={cat.name} 
+            onClick={() => setActiveCategory(cat.name)} 
+            className={`category-pill ${activeCategory === cat.name ? 'active' : ''}`}
+          >
+            {cat.icon && <span>{cat.icon}</span>}
+            {cat.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="listings-grid">
+        {filteredListings.length === 0 && <p style={{ color: 'var(--text-muted)', gridColumn: '1 / -1', textAlign: 'center', marginTop: 20 }}>Kanal topilmadi</p>}
         
         {filteredListings.map((list: any) => (
-          <div key={list.id} style={{ background: 'var(--surface-dark)', border: '1px solid var(--glass-border)', borderRadius: 16, padding: 16, transition: 'all 0.2s' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {list.channelName}
-                  {list.monetized && <span style={{ background: 'rgba(0,200,81,0.15)', color: 'var(--success-green)', fontSize: 10, padding: '2px 6px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 2 }}><Check size={10} /> Monetizatsiya</span>}
-                </h3>
-                <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', fontSize: 12 }}><Users size={12} /> {(list.subscribers || 0).toLocaleString()}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', fontSize: 12 }}><Eye size={12} /> {(list.monthlyViews || 0).toLocaleString()}/oy</span>
+          <div key={list.id} className="premium-card">
+            
+            <div className="card-header">
+              <div className="card-icon" style={{ color: getIconColor(list.channelName) }}>
+                {list.youtubeUrl ? <MonitorPlay size={18} strokeWidth={2.5}/> : <span style={{fontWeight: 800, fontSize: 16}}>{getFirstLetter(list.channelName)}</span>}
+              </div>
+              <div className="card-title" title={list.channelName}>{list.channelName}</div>
+            </div>
+
+            <div className="stats-row">
+              <div className="stat-item">
+                <Users size={12} className="stat-icon" /> {formatNumber(list.subscribers || 0)}
+              </div>
+              <div className="stat-item">
+                <Eye size={12} className="stat-icon" /> {formatNumber(list.monthlyViews || 0)}
+              </div>
+              <div className="stat-item" style={{ marginLeft: 'auto' }}>
+                {list.monetized ? 
+                  <CheckCircle2 size={14} color="var(--success-green)" /> : 
+                  <XCircle size={14} color="var(--danger-red)" />
+                }
+              </div>
+            </div>
+
+            <div className="info-list">
+              <div className="info-row">
+                <DollarSign size={11} className="stat-icon" /> 
+                Oylik Daromad: {list.monetized ? '$150+' : 'Yo\'q'}
+              </div>
+              {list.createdYear && (
+                <div className="info-row">
+                  <Calendar size={11} className="stat-icon" />
+                  Kanal Yoshi: {new Date().getFullYear() - list.createdYear} yil
                 </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ color: 'var(--text-main)', fontWeight: 800, fontSize: 16 }}>{(list.price || 0).toLocaleString()}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>UZS</div>
-              </div>
-            </div>
-
-            {list.description && <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{list.description}</p>}
-
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)' }}>{list.niche}</span>
-              {list.createdYear && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)' }}>{list.createdYear} y.</span>}
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              {list.youtubeUrl && (
-                <a href={list.youtubeUrl} target="_blank" rel="noreferrer" style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-main)', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none' }}>
-                  <MonitorPlay size={16} color="var(--yt-red)" /> Kanalni ko'rish
-                </a>
               )}
-              <button onClick={() => handleBuy(list)} disabled={buying} style={{ flex: 1.2, padding: '10px', borderRadius: 10, background: 'var(--yt-red)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                Sotib olish
-              </button>
+            </div>
+            
+            <div className="price-tag">
+              {(list.price || 0).toLocaleString()} UZS
+            </div>
+
+            <div className="card-actions">
+              {list.youtubeUrl ? (
+                <a href={list.youtubeUrl} target="_blank" rel="noreferrer" className="action-btn" style={{ textDecoration: 'none' }}>
+                  <Eye size={13} /> Ko'rish
+                </a>
+              ) : (
+                <div className="action-btn" onClick={() => alert("Kanal havolasi kiritilmagan")}>
+                  <Eye size={13} /> Ko'rish
+                </div>
+              )}
+              
+              <div className="action-btn" onClick={() => handleBuy(list)}>
+                <ShoppingCart size={13} /> Sotib olish
+              </div>
             </div>
           </div>
         ))}
@@ -549,7 +584,7 @@ export default function UserApp() {
 
       {showAddModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }} onClick={() => setShowAddModal(false)}>
-          <div style={{ background: '#111', border: '1px solid var(--glass-border)', borderRadius: 24, padding: '20px', width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: 24, padding: '20px', width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', position: 'relative' }} onClick={e => e.stopPropagation()}>
             <button onClick={() => setShowAddModal(false)} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}><X size={16} /></button>
             {renderAddModalContent()}
           </div>
@@ -558,7 +593,7 @@ export default function UserApp() {
 
       {selectedListing && paymentData && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000 }} onClick={() => setSelectedListing(null)}>
-          <div style={{ background: '#111', border: '1px solid var(--glass-border)', borderRadius: '24px 24px 0 0', padding: '24px 20px 36px', width: '100%', maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '24px 24px 0 0', padding: '24px 20px 36px', width: '100%', maxWidth: 480 }} onClick={e => e.stopPropagation()}>
             <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }}></div>
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <CheckCircle2 size={56} color="var(--success-green)" style={{ display: 'block', margin: '0 auto 10px', filter: 'drop-shadow(0 0 10px var(--success-green))' }} />
@@ -573,7 +608,7 @@ export default function UserApp() {
               {settings.cardOwnerName && <p style={{ margin: 0, color: 'var(--text-main)', fontSize: 14 }}>{settings.cardOwnerName}</p>}
             </div>
             <div style={{ background: 'rgba(255,0,0,0.1)', border: '1px solid rgba(255,0,0,0.3)', borderRadius: 14, padding: 14, marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--yt-light-red)', fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--yt-red)', fontWeight: 700, marginBottom: 6 }}>
                 <Info size={16} /> DIQQAT!
               </div>
               <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-main)', lineHeight: 1.5 }}>
@@ -590,6 +625,6 @@ export default function UserApp() {
         </div>
       )}
       <style>{`@keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }`}</style>
-    </div>
+    </>
   );
 }
