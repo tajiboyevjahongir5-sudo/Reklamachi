@@ -480,11 +480,13 @@ export default function UserApp() {
     <>
       <div className="header-container">
         <div className="logo-wrapper">
-          <div className="logo-icon-box">
-            <MonitorPlay size={24} color="var(--yt-red)" strokeWidth={2.5} />
+          <div className="logo-icon-box" style={{ background: 'transparent', padding: 0, width: 36, height: 26, filter: 'drop-shadow(0 0 12px rgba(255,0,0,0.4))' }}>
+            <svg viewBox="0 0 24 24" fill="var(--yt-red)" width="36" height="26">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
           </div>
           <div>
-            <h1 className="logo-title">Channel<span>Bozor</span></h1>
+            <h1 className="logo-title">YouTube<span>Bozor</span></h1>
             <p className="logo-subtitle">YouTube kanallar savdosi</p>
           </div>
         </div>
