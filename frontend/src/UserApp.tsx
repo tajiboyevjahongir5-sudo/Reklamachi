@@ -498,7 +498,7 @@ export default function UserApp() {
       </div>
 
       <div className="search-wrapper">
-        <Search size={18} color="var(--text-muted)" />
+        <Search size={15} color="var(--text-muted)" strokeWidth={2} />
         <input 
           className="search-input"
           value={searchQuery} 
