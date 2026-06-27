@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings, Users, Activity, Trash2, MonitorPlay, TrendingUp, ShoppingCart, ShieldCheck, CreditCard, Bell, Search, Send, PhoneOff, Phone, IdCard, Clock, Plus } from 'lucide-react';
+import { Settings, Users, Activity, Trash2, MonitorPlay, TrendingUp, ShoppingCart, ShieldCheck, CreditCard, Bell, Search, Send, PhoneOff, Phone, IdCard, Clock, Plus, X, Save, Tv, Hash, Eye, DollarSign, FileText, Tag } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -11,6 +11,17 @@ export default function AdminApp() {
   const [users, setUsers] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [searchUserQuery, setSearchUserQuery] = useState('');
+  const [showAddListing, setShowAddListing] = useState(false);
+  const [newListing, setNewListing] = useState({
+    channelName: '',
+    description: '',
+    niche: 'Boshqa',
+    price: 0,
+    subscribers: 0,
+    monthlyViews: 0,
+    youtubeUrl: '',
+    monetized: false
+  });
   const [settings, setSettings] = useState<any>({
     cardNumber: '',
     cardOwnerName: '',
@@ -80,6 +91,21 @@ export default function AdminApp() {
     if (!window.confirm("Rostdan ham bu e'lonni o'chirmoqchimisiz?")) return;
     try {
       await axios.delete(`${API_URL}/api/admin/listings/${id}`, axiosConfig);
+      fetchData();
+    } catch (err) {
+      alert('Xatolik yuz berdi');
+    }
+  };
+
+  const handleAddListing = async () => {
+    if (!newListing.channelName || !newListing.price) {
+      alert("Kanal nomi va narxini kiriting!");
+      return;
+    }
+    try {
+      await axios.post(`${API_URL}/api/admin/listings`, newListing, axiosConfig);
+      setShowAddListing(false);
+      setNewListing({ channelName: '', description: '', niche: 'Boshqa', price: 0, subscribers: 0, monthlyViews: 0, youtubeUrl: '', monetized: false });
       fetchData();
     } catch (err) {
       alert('Xatolik yuz berdi');
@@ -193,14 +219,84 @@ export default function AdminApp() {
 
         {activeTab === 'listings' && (
           <div>
-            <h2 className="admin-section-title">Barcha E'lonlar</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 className="admin-section-title" style={{ margin: 0 }}>Barcha E'lonlar</h2>
+              <button className="auc-btn-add" onClick={() => setShowAddListing(!showAddListing)}>
+                {showAddListing ? <><X size={14} /> Yopish</> : <><Plus size={14} /> Yangi e'lon</>}
+              </button>
+            </div>
+
+            {showAddListing && (
+              <div className="admin-add-form">
+                <div className="admin-form-section-title"><Tv size={16} /> Yangi E'lon Qo'shish</div>
+                
+                <div className="admin-form-group">
+                  <label className="admin-form-label"><MonitorPlay size={13} /> Kanal nomi *</label>
+                  <input value={newListing.channelName} onChange={e => setNewListing({...newListing, channelName: e.target.value})} placeholder="Masalan: Tech UZ" />
+                </div>
+
+                <div className="admin-form-group">
+                  <label className="admin-form-label"><FileText size={13} /> Tavsif</label>
+                  <textarea value={newListing.description} onChange={e => setNewListing({...newListing, description: e.target.value})} placeholder="Kanal haqida qisqacha..." rows={3} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 12px', color: '#fff', fontSize: 14, resize: 'vertical', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' }} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label"><DollarSign size={13} /> Narxi (UZS) *</label>
+                    <input type="number" value={newListing.price || ''} onChange={e => setNewListing({...newListing, price: Number(e.target.value)})} placeholder="500000" />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label"><Hash size={13} /> Obunchilar</label>
+                    <input type="number" value={newListing.subscribers || ''} onChange={e => setNewListing({...newListing, subscribers: Number(e.target.value)})} placeholder="10000" />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label"><Eye size={13} /> Oylik ko'rishlar</label>
+                    <input type="number" value={newListing.monthlyViews || ''} onChange={e => setNewListing({...newListing, monthlyViews: Number(e.target.value)})} placeholder="50000" />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label"><Tag size={13} /> Kategoriya</label>
+                    <select value={newListing.niche} onChange={e => setNewListing({...newListing, niche: e.target.value})} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 12px', color: '#fff', fontSize: 14, fontFamily: 'Inter, sans-serif', width: '100%' }}>
+                      <option value="Boshqa">Boshqa</option>
+                      <option value="Texnologiya">Texnologiya</option>
+                      <option value="O'yin">O'yin</option>
+                      <option value="Musiqa">Musiqa</option>
+                      <option value="Ta'lim">Ta'lim</option>
+                      <option value="Vlog">Vlog</option>
+                      <option value="Sport">Sport</option>
+                      <option value="Yangiliklar">Yangiliklar</option>
+                      <option value="Ko'ngilochar">Ko'ngilochar</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="admin-form-group">
+                  <label className="admin-form-label"><Tv size={13} /> YouTube URL</label>
+                  <input value={newListing.youtubeUrl} onChange={e => setNewListing({...newListing, youtubeUrl: e.target.value})} placeholder="https://youtube.com/@kanal" />
+                </div>
+
+                <div className="toggle-row" style={{ marginTop: 4 }}>
+                  <span className="toggle-label">Monetizatsiya yoqilgan</span>
+                  <input type="checkbox" className="toggle-switch" checked={newListing.monetized} onChange={e => setNewListing({...newListing, monetized: e.target.checked})} />
+                </div>
+
+                <button className="admin-save-btn" onClick={handleAddListing} style={{ marginTop: 16 }}>
+                  <Save size={16} /> E'lonni Saqlash
+                </button>
+              </div>
+            )}
+
             {listings.map(c => (
               <div key={c.id} className="admin-listing-item">
                 <div>
                   <div className="admin-listing-name">{c.channelName}</div>
                   <div className="admin-listing-meta">
                     <span className="price-inline">{c.price.toLocaleString()} UZS</span>
-                    <span>• Sotuvchi: {c.seller?.firstName || c.sellerId}</span>
+                    <span>• {c.niche}</span>
+                    <span>• {c.subscribers?.toLocaleString()} obunchi</span>
+                    {c.seller && <span>• Sotuvchi: {c.seller.firstName || c.sellerId}</span>}
                   </div>
                 </div>
                 <button className="admin-delete-btn" onClick={() => handleDeleteListing(c.id)}>
@@ -208,7 +304,7 @@ export default function AdminApp() {
                 </button>
               </div>
             ))}
-            {listings.length === 0 && (
+            {listings.length === 0 && !showAddListing && (
               <div className="admin-empty">
                 <MonitorPlay className="admin-empty-icon" />
                 <br />E'lonlar yo'q.
