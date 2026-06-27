@@ -14,7 +14,7 @@ app.use(express.json());
 app.get('/api/listings', async (req, res) => {
   try {
     const listings = await prisma.listing.findMany({
-      where: { status: 'ACTIVE' }
+      where: { status: { in: ['ACTIVE', 'SOLD'] } }
     });
     res.json(listings);
   } catch (err) {

@@ -137,14 +137,39 @@ bot.on('channel_post', async (ctx) => {
           ).catch(() => null);
         }
       } else if (payment.type === 'PURCHASE') {
-        // Change listing status to SOLD? Or leave it ACTIVE until admin confirms transfer?
-        // Let's leave it ACTIVE and let admin manage it, but notify both.
-        
-        await bot.telegram.sendMessage(
-          payment.userId, 
-          `✅ Kanal xaridi uchun to'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nTez orada Admin siz bilan kanalni o'tkazib berish bo'yicha bog'lanadi.`,
-          { parse_mode: 'Markdown' }
-        );
+        const listing = await prisma.listing.findUnique({
+          where: { id: payment.listingId! },
+          include: { seller: true }
+        });
+
+        if (listing) {
+          await prisma.listing.update({
+            where: { id: listing.id },
+            data: { status: 'SOLD' }
+          });
+
+          let sellerUrl = `tg://user?id=${listing.sellerId}`;
+          if (listing.seller?.username) {
+            sellerUrl = `https://t.me/${listing.seller.username}`;
+          }
+
+          await bot.telegram.sendMessage(
+            payment.userId, 
+            `✅ Kanal xaridi uchun to'lovingiz (${payment.amount.toLocaleString()} UZS) tasdiqlandi!\n\nBu tugma sizni kanal egasi bilan bog'laydi, kanal egasi bilan suhbatlashing admin ko'rgach kanal sizga o'tkazib beriladi.`,
+            { 
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [[{ text: 'Kanal egasi bilan bog\'lanish', url: sellerUrl }]]
+              }
+            }
+          );
+        } else {
+          await bot.telegram.sendMessage(
+            payment.userId, 
+            `✅ Kanal xaridi uchun to'lovingiz tasdiqlandi, lekin kanal topilmadi. Admin bilan bog'laning.`,
+            { parse_mode: 'Markdown' }
+          );
+        }
 
         const adminId = process.env.ADMIN_ID;
         if (settings?.notifyNewPayment && adminId) {

@@ -576,9 +576,15 @@ export default function UserApp() {
                 </div>
               )}
               
-              <div className="action-btn" onClick={() => handleBuy(list)}>
-                <ShoppingCart size={13} /> Sotib olish
-              </div>
+              {list.status === 'SOLD' ? (
+                <div className="action-btn" style={{ flex: 1, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', pointerEvents: 'none' }}>
+                  Sotilgan
+                </div>
+              ) : (
+                <div className="action-btn" onClick={() => handleBuy(list)}>
+                  <ShoppingCart size={13} /> Sotib olish
+                </div>
+              )}
             </div>
           </div>
         ))}
