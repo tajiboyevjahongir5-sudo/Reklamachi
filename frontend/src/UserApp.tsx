@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { Users, CheckCircle2, Eye, Search, Plus, X, Wallet, ArrowDownCircle, TrendingUp, MonitorPlay, Info, ShoppingCart, Calendar, DollarSign, XCircle, Gamepad2, Camera, Layers, Clapperboard, Music, Briefcase, Trophy, Cpu, Sparkles } from 'lucide-react';
+import { Users, CheckCircle2, Eye, Search, Plus, X, Wallet, ArrowDownCircle, TrendingUp, MonitorPlay, Info, ShoppingCart, Calendar, DollarSign, XCircle, Gamepad2, Camera, Layers, Clapperboard, Music, Briefcase, Trophy, Cpu, Sparkles, ImagePlus, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -54,7 +54,14 @@ export default function UserApp() {
   const [formMonetized, setFormMonetized] = useState(false);
   const [formCard, setFormCard] = useState('');
   const [formCardName, setFormCardName] = useState('');
+  const [formImages, setFormImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Gallery viewer
+  const [galleryListing, setGalleryListing] = useState<any>(null);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [loadingGallery, setLoadingGallery] = useState(false);
 
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawing, setWithdrawing] = useState(false);
@@ -101,6 +108,51 @@ export default function UserApp() {
       return matchCat && matchSearch;
     });
   }, [listings, activeCategory, searchQuery]);
+
+  // Compress image file to base64, max width 900px, quality 0.75
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_W = 900;
+          const scale = img.width > MAX_W ? MAX_W / img.width : 1;
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.75));
+        };
+        img.onerror = reject;
+        img.src = e.target!.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const remaining = 3 - formImages.length;
+    const toProcess = files.slice(0, remaining);
+    const compressed = await Promise.all(toProcess.map(compressImage));
+    setFormImages(prev => [...prev, ...compressed].slice(0, 3));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleViewGallery = async (listing: any) => {
+    setLoadingGallery(true);
+    setGalleryIndex(0);
+    try {
+      const res = await axios.get(`${API_URL}/api/listings/${listing.id}`);
+      setGalleryListing(res.data);
+    } catch {
+      setGalleryListing(listing);
+    }
+    setLoadingGallery(false);
+  };
 
   const handleBuy = async (listing: any) => {
     try {
@@ -164,7 +216,8 @@ export default function UserApp() {
         createdYear: formYear ? Number(formYear) : null,
         monetized: formMonetized,
         cardNumber: formCard.trim(),
-        cardOwnerName: formCardName.trim()
+        cardOwnerName: formCardName.trim(),
+        images: formImages
       });
       
       const [listingsRes] = await Promise.all([
@@ -176,7 +229,7 @@ export default function UserApp() {
       setFormName(''); setFormDesc(''); setFormCategory('Boshqa');
       setFormPrice(''); setFormSubs(''); setFormViews(''); setFormUrl('');
       setFormYear(''); setFormMonetized(false);
-      setFormCard(''); setFormCardName('');
+      setFormCard(''); setFormCardName(''); setFormImages([]);
       setModalStep('main');
       setSubmitting(false);
     } catch (err: any) {
@@ -428,6 +481,51 @@ export default function UserApp() {
                 <input value={formCardName} onChange={e => setFormCardName(e.target.value)} placeholder="Ism Familiya" />
               </div>
             </div>
+            <div>
+              <label style={labelStyle}>📸 Kanal screenshoti (max 3 ta)</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImagePick}
+                style={{ display: 'none' }}
+              />
+              {formImages.length < 3 && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    width: '100%', padding: '10px', borderRadius: 10,
+                    background: 'rgba(255,255,255,0.04)', border: '1.5px dashed rgba(255,255,255,0.15)',
+                    color: 'var(--text-muted)', cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 600
+                  }}
+                >
+                  <ImagePlus size={16} /> Rasm qo'shish ({formImages.length}/3)
+                </button>
+              )}
+              {formImages.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  {formImages.map((img, i) => (
+                    <div key={i} style={{ position: 'relative', width: 80, height: 60, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        onClick={() => setFormImages(prev => prev.filter((_, idx) => idx !== i))}
+                        style={{
+                          position: 'absolute', top: 2, right: 2,
+                          background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff',
+                          borderRadius: '50%', width: 18, height: 18,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0
+                        }}
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button onClick={() => setModalStep('main')} style={{ flex: 1, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-main)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Ortga</button>
@@ -566,15 +664,10 @@ export default function UserApp() {
             </div>
 
             <div className="card-actions">
-              {list.youtubeUrl ? (
-                <a href={list.youtubeUrl} target="_blank" rel="noreferrer" className="action-btn" style={{ textDecoration: 'none' }}>
-                  <Eye size={13} /> Ko'rish
-                </a>
-              ) : (
-                <div className="action-btn" onClick={() => alert("Kanal havolasi kiritilmagan")}>
-                  <Eye size={13} /> Ko'rish
-                </div>
-              )}
+              <div className="action-btn" onClick={() => !loadingGallery && handleViewGallery(list)}>
+                {loadingGallery ? <MonitorPlay size={13} style={{ animation: 'pulse 1s infinite' }} /> : <Eye size={13} />}
+                Ko'rish
+              </div>
               
               {list.status === 'SOLD' ? (
                 <div className="action-btn" style={{ flex: 1, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', pointerEvents: 'none' }}>
@@ -633,6 +726,71 @@ export default function UserApp() {
         </div>
       )}
       <style>{`@keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }`}</style>
+
+      {/* Gallery Modal */}
+      {galleryListing && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(16px)', zIndex: 2000, display: 'flex', flexDirection: 'column' }}>
+          {/* Top bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', flexShrink: 0 }}>
+            <button onClick={() => setGalleryListing(null)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: 10, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <ChevronLeft size={16} /> Orqaga
+            </button>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{galleryListing.channelName}</div>
+            <div style={{ width: 80 }} />
+          </div>
+
+          {/* Image Viewer */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', padding: '0 8px' }}>
+            {(galleryListing.images && galleryListing.images.length > 0) ? (
+              <>
+                <img
+                  src={galleryListing.images[galleryIndex]}
+                  alt={`Screenshot ${galleryIndex + 1}`}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 12 }}
+                />
+                {galleryListing.images.length > 1 && (
+                  <>
+                    <button onClick={() => setGalleryIndex(i => (i - 1 + galleryListing.images.length) % galleryListing.images.length)} style={{ position: 'absolute', left: 8, background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button onClick={() => setGalleryIndex(i => (i + 1) % galleryListing.images.length)} style={{ position: 'absolute', right: 8, background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      <ChevronRight size={20} />
+                    </button>
+                    <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6 }}>
+                      {galleryListing.images.map((_: any, i: number) => (
+                        <div key={i} onClick={() => setGalleryIndex(i)} style={{ width: 7, height: 7, borderRadius: '50%', background: i === galleryIndex ? '#fff' : 'rgba(255,255,255,0.3)', cursor: 'pointer', transition: 'background 0.2s' }} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+                <MonitorPlay size={60} style={{ opacity: 0.3, display: 'block', margin: '0 auto 12px' }} />
+                <p style={{ fontSize: 14 }}>Rasm yuklanmagan</p>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom actions */}
+          <div style={{ padding: '16px', flexShrink: 0, display: 'flex', gap: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            {galleryListing.youtubeUrl ? (
+              <a
+                href={galleryListing.youtubeUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ flex: 1, background: 'rgba(255,0,0,0.12)', border: '1px solid rgba(255,0,0,0.3)', color: 'var(--yt-red)', padding: '12px', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}
+              >
+                <ExternalLink size={16} /> YouTube Kanalga O'tish
+              </a>
+            ) : (
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.3)', padding: '12px', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13 }}>
+                Havola kiritilmagan
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -30,7 +30,8 @@ model Listing {
   youtubeUrl   String?
   monetized    Boolean  @default(false)
   createdYear  Int?
-  imageUrl     String?  // Optional screenshot URL
+  imageUrl     String?  // Optional screenshot URL (legacy)
+  images       String[] @default([]) // Up to 3 screenshot URLs/base64
   
   status       String   @default("ACTIVE") // ACTIVE, SOLD, HIDDEN
   createdAt    DateTime @default(now())

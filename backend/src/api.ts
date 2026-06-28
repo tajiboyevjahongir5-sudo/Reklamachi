@@ -14,9 +14,29 @@ app.use(express.json());
 app.get('/api/listings', async (req, res) => {
   try {
     const listings = await prisma.listing.findMany({
-      where: { status: { in: ['ACTIVE', 'SOLD'] } }
+      where: { status: { in: ['ACTIVE', 'SOLD'] } },
+      select: {
+        id: true, channelName: true, description: true, niche: true,
+        price: true, subscribers: true, monthlyViews: true, youtubeUrl: true,
+        monetized: true, createdYear: true, status: true, createdAt: true,
+        sellerId: true, imageUrl: true
+        // images excluded from list — fetched separately to keep response small
+      }
     });
     res.json(listings);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get single listing with images
+app.get('/api/listings/:id', async (req, res) => {
+  try {
+    const listing = await prisma.listing.findUnique({
+      where: { id: Number(req.params.id) }
+    });
+    if (!listing) return res.status(404).json({ error: 'Topilmadi' });
+    res.json(listing);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -208,7 +228,7 @@ app.get('/api/user/listings', async (req, res) => {
 
 // Submit new listing
 app.post('/api/user/listings', async (req, res) => {
-  const { userId, channelName, description, niche, price, subscribers, monthlyViews, youtubeUrl, monetized, createdYear, cardNumber, cardOwnerName } = req.body;
+  const { userId, channelName, description, niche, price, subscribers, monthlyViews, youtubeUrl, monetized, createdYear, cardNumber, cardOwnerName, images } = req.body;
   try {
     const unusedPayment = await prisma.payment.findFirst({
       where: { userId: String(userId), type: 'LISTING', status: 'COMPLETED' },
@@ -217,13 +237,15 @@ app.post('/api/user/listings', async (req, res) => {
 
     if (!unusedPayment) return res.status(403).json({ error: "Sizda tolov qilingan limit yoq" });
 
+    const imageList: string[] = Array.isArray(images) ? images.slice(0, 3) : [];
     const listing = await prisma.listing.create({
       data: {
         channelName, description, niche: niche || 'Boshqa',
         price: Number(price), subscribers: Number(subscribers),
         monthlyViews: Number(monthlyViews || 0), youtubeUrl,
         monetized: Boolean(monetized), createdYear: createdYear ? Number(createdYear) : null,
-        sellerId: String(userId), cardNumber, cardOwnerName
+        sellerId: String(userId), cardNumber, cardOwnerName,
+        images: imageList
       }
     });
 
