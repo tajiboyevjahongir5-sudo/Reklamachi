@@ -343,13 +343,16 @@ app.get('/api/profile', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Sales (for calculating balance where transferConfirmed = true)
+    // Sales (for calculating balance and displaying chats)
     const sales = await prisma.payment.findMany({
-      where: { listing: { sellerId: userId }, type: 'PURCHASE', status: 'COMPLETED', transferConfirmed: true },
-      include: { listing: true }
+      where: { listing: { sellerId: userId }, type: 'PURCHASE', status: 'COMPLETED' },
+      include: { listing: true },
+      orderBy: { createdAt: 'desc' }
     });
     
-    const totalEarned = sales.reduce((acc, sale) => acc + (sale.amount * 0.9), 0);
+    const totalEarned = sales
+      .filter((sale) => sale.transferConfirmed)
+      .reduce((acc, sale) => acc + (sale.amount * 0.9), 0);
     const withdrawals = await prisma.withdrawal.aggregate({
       where: { userId, status: { in: ['PENDING', 'COMPLETED'] } },
       _sum: { amount: true }

@@ -110,6 +110,25 @@ export default function UserApp() {
     }
   };
 
+  useEffect(() => {
+    let interval: any;
+    if (activeChatPayment) {
+      interval = setInterval(async () => {
+        try {
+          const res = await axios.get(`${API_URL}/api/chat/messages?paymentId=${activeChatPayment.id}`);
+          setChatMessages((prev) => {
+            if (prev.length !== res.data.length) {
+              setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+              return res.data;
+            }
+            return prev;
+          });
+        } catch(e) {}
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [activeChatPayment]);
+
   const sendChatMessage = async () => {
     if(!chatInput.trim() || !activeChatPayment) return;
     const txt = chatInput;
