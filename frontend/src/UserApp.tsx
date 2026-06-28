@@ -72,6 +72,7 @@ export default function UserApp() {
   const [activeChatPayment, setActiveChatPayment] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [pendingChatPayment, setPendingChatPayment] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fetchProfile = useCallback(async () => {
     try {
@@ -781,7 +782,7 @@ export default function UserApp() {
                 <p style={{ color: 'var(--text-muted)' }}>Xabarlar yo'q.</p>
               )}
               {profileData.purchases.map((p: any) => (
-                <div key={`p-${p.id}`} className="chat-list-item" onClick={() => openChat(p)}>
+                <div key={`p-${p.id}`} className="chat-list-item" onClick={() => setPendingChatPayment(p)}>
                   <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>Xarid: {p.listing?.channelName}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Sotuvchi bilan suhbat</div>
                 </div>
@@ -1009,6 +1010,20 @@ export default function UserApp() {
                 Havola kiritilmagan
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {pendingChatPayment && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 16 }} onClick={() => setPendingChatPayment(null)}>
+          <div style={{ background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: 24, padding: '24px 20px', width: '100%', maxWidth: 420, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <Info size={48} color="var(--accent-gold)" style={{ margin: '0 auto 16px', display: 'block' }} />
+            <h2 style={{ fontSize: 18, color: 'var(--text-main)', marginBottom: 12 }}>Diqqat</h2>
+            <p style={{ color: 'var(--text-main)', fontSize: 14, lineHeight: 1.5, marginBottom: 20 }}>
+              Kanalni to'liq o'zingizga o'tkazib olganingizdan keyin, Profil bo'limidan tasdiqlang. Shunda e'lon joylagan foydalanuvchi hisobi to'ldiriladi.
+            </p>
+            <button onClick={() => { openChat(pendingChatPayment); setPendingChatPayment(null); }} className="btn-gold" style={{ width: '100%', justifyContent: 'center', padding: 12 }}>
+              Davom etish
+            </button>
           </div>
         </div>
       )}
