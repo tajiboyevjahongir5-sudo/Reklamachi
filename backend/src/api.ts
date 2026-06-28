@@ -522,8 +522,9 @@ app.get('/api/admin/listings', requireAdmin, async (req, res) => {
 app.post('/api/admin/listings', requireAdmin, async (req, res) => {
   const { channelName, description, niche, price, subscribers, monthlyViews, youtubeUrl, monetized, status } = req.body;
   try {
+    const adminId = String(req.headers['x-admin-id']);
     const listing = await prisma.listing.create({
-      data: { channelName, description, niche: niche || 'Boshqa', price: Number(price), subscribers: Number(subscribers), monthlyViews: Number(monthlyViews || 0), youtubeUrl, monetized: Boolean(monetized), status: status || 'ACTIVE' }
+      data: { sellerId: adminId, channelName, description, niche: niche || 'Boshqa', price: Number(price), subscribers: Number(subscribers), monthlyViews: Number(monthlyViews || 0), youtubeUrl, monetized: Boolean(monetized), status: status || 'ACTIVE' }
     });
     res.json(listing);
   } catch (err) {
