@@ -74,9 +74,12 @@ export default function UserApp() {
   const [chatInput, setChatInput] = useState('');
   const [pendingChatPayment, setPendingChatPayment] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+
+
   const fetchProfile = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/profile?userId=${userId}`);
+      const res = await axios.get(`${API_URL}/api/profile?userId=${userId}&_t=${Date.now()}`);
       setProfileData(res.data);
     } catch (e) {
       console.error(e);
@@ -103,7 +106,7 @@ export default function UserApp() {
   const openChat = async (payment: any) => {
     setActiveChatPayment(payment);
     try {
-      const res = await axios.get(`${API_URL}/api/chat/messages?paymentId=${payment.id}`);
+      const res = await axios.get(`${API_URL}/api/chat/messages?paymentId=${payment.id}&_t=${Date.now()}`);
       setChatMessages(res.data);
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch(e) {
@@ -116,7 +119,7 @@ export default function UserApp() {
     if (activeChatPayment) {
       interval = setInterval(async () => {
         try {
-          const res = await axios.get(`${API_URL}/api/chat/messages?paymentId=${activeChatPayment.id}`);
+          const res = await axios.get(`${API_URL}/api/chat/messages?paymentId=${activeChatPayment.id}&_t=${Date.now()}`);
           setChatMessages((prev) => {
             if (prev.length !== res.data.length) {
               setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -172,8 +175,8 @@ export default function UserApp() {
     }
 
     Promise.all([
-      axios.get(`${API_URL}/api/listings`),
-      axios.get(`${API_URL}/api/settings`)
+      axios.get(`${API_URL}/api/listings?_t=${Date.now()}`),
+      axios.get(`${API_URL}/api/settings?_t=${Date.now()}`)
     ]).then(([listingsRes, settingsRes]) => {
       setListings(listingsRes.data);
       setSettings(settingsRes.data);
@@ -187,7 +190,7 @@ export default function UserApp() {
   const fetchMyListings = useCallback(async () => {
     setLoadingMyListings(true);
     try {
-      const res = await axios.get(`${API_URL}/api/user/listings?userId=${userId}`);
+      const res = await axios.get(`${API_URL}/api/user/listings?userId=${userId}&_t=${Date.now()}`);
       setMyListings(res.data.listings || []);
       setMyBalance(res.data.balance || 0);
       setHasUnusedPayment(res.data.hasUnusedPayment || false);
@@ -244,7 +247,7 @@ export default function UserApp() {
     setLoadingGallery(true);
     setGalleryIndex(0);
     try {
-      const res = await axios.get(`${API_URL}/api/listings/${listing.id}`);
+      const res = await axios.get(`${API_URL}/api/listings/${listing.id}?_t=${Date.now()}`);
       setGalleryListing(res.data);
     } catch {
       setGalleryListing(listing);
