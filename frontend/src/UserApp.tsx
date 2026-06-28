@@ -391,28 +391,16 @@ export default function UserApp() {
           </div>
 
           <div style={{
-            background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)',
-            borderRadius: 14, padding: '12px 16px', marginBottom: 16, display: 'flex',
-            justifyContent: 'space-between', alignItems: 'center'
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 14, padding: '14px', marginBottom: 16, textAlign: 'center'
           }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>Balans</p>
-              <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 800, color: 'var(--text-main)' }}>
-                {Math.floor(myBalance).toLocaleString()} <span style={{ fontSize: 12, fontWeight: 400 }}>UZS</span>
-              </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--accent-gold)', marginBottom: 6, fontWeight: 700 }}>
+              <Info size={16} /> Muhim ma'lumot
             </div>
-            {myBalance >= 1000 && (
-              <button
-                onClick={() => { setModalStep('withdraw'); setWithdrawAmount(''); }}
-                style={{
-                  background: 'rgba(46, 204, 113, 0.1)', border: '1px solid rgba(46, 204, 113, 0.3)',
-                  color: 'var(--success-green)', borderRadius: 10, padding: '8px 14px',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5
-                }}
-              >
-                <ArrowDownCircle size={14} /> Pul yechish
-              </button>
-            )}
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-main)', lineHeight: 1.4 }}>
+              Kanalingiz sotilsa kanal narxining <strong>10% qismi</strong> ushlab qolinadi.<br/>
+              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Sababi: Admin puli, ishonchlilik va tezlik uchun.</span>
+            </p>
           </div>
 
           {myListings.length > 0 && (
