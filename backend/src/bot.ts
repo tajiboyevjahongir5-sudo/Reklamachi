@@ -96,7 +96,7 @@ bot.on('channel_post', async (ctx) => {
 
   const pendingPayments = await prisma.payment.findMany({ 
     where: { status: 'PENDING' },
-    include: { listing: true }
+    include: { listing: true, user: true }
   });
 
   const extractedNumbers = extractNumbers(text);
@@ -163,6 +163,18 @@ bot.on('channel_post', async (ctx) => {
               }
             }
           );
+          
+          if (listing.sellerId) {
+            bot.telegram.sendMessage(
+              listing.sellerId,
+              `🎉 *Xushxabar! Kanalingiz sotib olindi!*\n\n` +
+              `Xaridor: **${payment.user?.firstName || 'Mijoz'}**\n` +
+              `Kanal: **${listing.channelName}**\n` +
+              `To'lov summasi: **${payment.amount.toLocaleString()} UZS**\n\n` +
+              `Qo'rqmasdan kanalni o'tkazing, kanal uchun to'langan pul admin qo'lida. Kanal to'liq yangi egasiga o'tkazilgach pulingiz o'tkazib beriladi. Iltimos, xaridor bilan bog'lanib, o'tkazish jarayonini yakunlang.`,
+              { parse_mode: 'Markdown' }
+            ).catch(() => null);
+          }
         } else {
           await bot.telegram.sendMessage(
             payment.userId, 

@@ -330,6 +330,118 @@ app.post('/api/user/withdraw', async (req, res) => {
   }
 });
 
+// Get User Profile & Chat Data
+app.get('/api/profile', async (req, res) => {
+  const userId = String(req.query.userId);
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    
+    // Purchases (for chat and transfer confirmation)
+    const purchases = await prisma.payment.findMany({
+      where: { userId, type: 'PURCHASE', status: 'COMPLETED' },
+      include: { listing: { include: { seller: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Sales (for calculating balance where transferConfirmed = true)
+    const sales = await prisma.payment.findMany({
+      where: { listing: { sellerId: userId }, type: 'PURCHASE', status: 'COMPLETED', transferConfirmed: true },
+      include: { listing: true }
+    });
+    
+    const totalEarned = sales.reduce((acc, sale) => acc + (sale.amount * 0.9), 0);
+    const withdrawals = await prisma.withdrawal.aggregate({
+      where: { userId, status: { in: ['PENDING', 'COMPLETED'] } },
+      _sum: { amount: true }
+    });
+    const totalWithdrawn = withdrawals._sum.amount || 0;
+    const balance = totalEarned - totalWithdrawn;
+
+    res.json({
+      user,
+      purchases,
+      sales,
+      balance
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Chat Messages
+app.get('/api/chat/messages', async (req, res) => {
+  const paymentId = Number(req.query.paymentId);
+  try {
+    const messages = await prisma.message.findMany({
+      where: { paymentId },
+      orderBy: { createdAt: 'asc' }
+    });
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Send Chat Message
+app.post('/api/chat/send', async (req, res) => {
+  const { paymentId, senderId, text, imageData } = req.body;
+  try {
+    const message = await prisma.message.create({
+      data: { paymentId: Number(paymentId), senderId: String(senderId), text, imageData }
+    });
+
+    // Notify the other party via Telegram bot
+    const payment = await prisma.payment.findUnique({
+      where: { id: Number(paymentId) },
+      include: { listing: true }
+    });
+    
+    if (payment && payment.listing) {
+      const recipientId = senderId === payment.userId ? payment.listing.sellerId : payment.userId;
+      if (recipientId) {
+        const title = `Yangi xabar (${payment.listing.channelName} kanali bo'yicha):\n\n`;
+        const content = text ? `💬 ${text}` : `🖼️ Rasm yuborildi`;
+        bot.telegram.sendMessage(recipientId, title + content).catch(() => null);
+      }
+    }
+
+    res.json(message);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Confirm Transfer
+app.post('/api/confirm-transfer', async (req, res) => {
+  const { paymentId, userId } = req.body;
+  try {
+    const payment = await prisma.payment.findFirst({
+      where: { id: Number(paymentId), userId: String(userId), type: 'PURCHASE', status: 'COMPLETED' },
+      include: { listing: true }
+    });
+
+    if (!payment) return res.status(404).json({ error: 'Topilmadi' });
+    if (payment.transferConfirmed) return res.status(400).json({ error: 'Allaqachon tasdiqlangan' });
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { transferConfirmed: true }
+    });
+
+    // Notify seller
+    if (payment.listing && payment.listing.sellerId) {
+      bot.telegram.sendMessage(
+        payment.listing.sellerId,
+        `✅ *Xushxabar!*\n\n${payment.listing.channelName} kanali xaridori kanalni qabul qilib olganini tasdiqladi.\nSizning hisobingizga ${ (payment.amount * 0.9).toLocaleString() } UZS qo'shildi!`,
+        { parse_mode: 'Markdown' }
+      ).catch(() => null);
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // --- Admin Routes ---
 const requireAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {

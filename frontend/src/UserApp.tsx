@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { Users, CheckCircle2, Eye, Search, Plus, X, Wallet, ArrowDownCircle, TrendingUp, MonitorPlay, Info, ShoppingCart, Calendar, DollarSign, XCircle, Gamepad2, Camera, Layers, Clapperboard, Music, Briefcase, Trophy, Cpu, Sparkles, ImagePlus, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { Users, CheckCircle2, Eye, Search, Plus, X, Wallet, ArrowDownCircle, TrendingUp, MonitorPlay, Info, ShoppingCart, Calendar, DollarSign, XCircle, Gamepad2, Camera, Layers, Clapperboard, Music, Briefcase, Trophy, Cpu, Sparkles, ImagePlus, ChevronLeft, ChevronRight, ExternalLink, Home, MessageCircle, User, Send, Check } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -65,6 +65,84 @@ export default function UserApp() {
 
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawing, setWithdrawing] = useState(false);
+
+  // Nav, Chat & Profile States
+  const [activeNavTab, setActiveNavTab] = useState<'asosiy'|'xabarlar'|'profil'>('asosiy');
+  const [profileData, setProfileData] = useState<any>(null);
+  const [activeChatPayment, setActiveChatPayment] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/profile?userId=${userId}`);
+      setProfileData(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeNavTab === 'profil' || activeNavTab === 'xabarlar') {
+      fetchProfile();
+    }
+  }, [activeNavTab, fetchProfile]);
+
+  const confirmTransfer = async (paymentId: number) => {
+    if(!confirm("Kanalni to'liq o'zingizga o'tkazib oldingizmi? Bu amalni ortga qaytarib bo'lmaydi.")) return;
+    try {
+      await axios.post(`${API_URL}/api/confirm-transfer`, { paymentId, userId });
+      alert("Muvaffaqiyatli tasdiqlandi!");
+      fetchProfile();
+    } catch(e) {
+      alert("Xatolik yuz berdi");
+    }
+  };
+
+  const openChat = async (payment: any) => {
+    setActiveChatPayment(payment);
+    try {
+      const res = await axios.get(`${API_URL}/api/chat/messages?paymentId=${payment.id}`);
+      setChatMessages(res.data);
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if(!chatInput.trim() || !activeChatPayment) return;
+    const txt = chatInput;
+    setChatInput('');
+    try {
+      const res = await axios.post(`${API_URL}/api/chat/send`, {
+        paymentId: activeChatPayment.id,
+        senderId: userId,
+        text: txt
+      });
+      setChatMessages(prev => [...prev, res.data]);
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+  const sendChatImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if(!file || !activeChatPayment) return;
+    try {
+      const base64 = await compressImage(file);
+      const res = await axios.post(`${API_URL}/api/chat/send`, {
+        paymentId: activeChatPayment.id,
+        senderId: userId,
+        imageData: base64
+      });
+      setChatMessages(prev => [...prev, res.data]);
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch(err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     if ((window as any).Telegram?.WebApp) {
@@ -575,7 +653,9 @@ export default function UserApp() {
   };
 
   return (
-    <>
+    <div className="main-wrapper">
+      {/* --- ASOSIY --- */}
+      <div style={{ display: activeNavTab === 'asosiy' ? 'block' : 'none' }}>
       <div className="header-container">
         <div className="logo-wrapper">
           <div className="logo-icon-box" style={{ background: 'transparent', padding: 0, width: 36, height: 26, filter: 'drop-shadow(0 0 12px rgba(255,0,0,0.4))' }}>
@@ -681,6 +761,140 @@ export default function UserApp() {
             </div>
           </div>
         ))}
+      </div>
+      </div>
+
+      {/* --- XABARLAR --- */}
+      {activeNavTab === 'xabarlar' && !activeChatPayment && (
+        <div style={{ padding: 16 }}>
+          <h2 style={{ color: 'var(--text-main)', marginBottom: 16 }}>Xabarlar</h2>
+          {profileData ? (
+            <>
+              {profileData.purchases.length === 0 && profileData.sales.length === 0 && (
+                <p style={{ color: 'var(--text-muted)' }}>Xabarlar yo'q.</p>
+              )}
+              {profileData.purchases.map((p: any) => (
+                <div key={`p-${p.id}`} className="chat-list-item" onClick={() => openChat(p)}>
+                  <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>Xarid: {p.listing?.channelName}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Sotuvchi bilan suhbat</div>
+                </div>
+              ))}
+              {profileData.sales.map((p: any) => (
+                <div key={`s-${p.id}`} className="chat-list-item" onClick={() => openChat(p)}>
+                  <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>Sotuv: {p.listing?.channelName}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Xaridor bilan suhbat</div>
+                </div>
+              ))}
+            </>
+          ) : (
+             <div style={{ textAlign: 'center', paddingTop: 40 }}><MonitorPlay size={32} style={{ animation: 'pulse 1.5s infinite', opacity: 0.5 }}/></div>
+          )}
+        </div>
+      )}
+
+      {/* Active Chat Interface */}
+      {activeNavTab === 'xabarlar' && activeChatPayment && (
+        <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-dark)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--glass-border)' }}>
+            <button onClick={() => setActiveChatPayment(null)} style={{ background: 'transparent', border: 'none', color: '#fff', padding: 0 }}><ChevronLeft size={24} /></button>
+            <div style={{ fontWeight: 600 }}>Suhbat: {activeChatPayment.listing?.channelName}</div>
+          </div>
+          
+          <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column' }}>
+            {chatMessages.map(msg => (
+              <div key={msg.id} className={`chat-bubble ${msg.senderId === String(userId) ? 'mine' : 'theirs'}`}>
+                {msg.text && <div>{msg.text}</div>}
+                {msg.imageData && <img src={msg.imageData} alt="" style={{ maxWidth: 200, borderRadius: 8, marginTop: msg.text ? 8 : 0 }} />}
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div style={{ padding: '12px 16px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: 8, alignItems: 'center', background: 'rgba(255,255,255,0.03)' }}>
+            <label style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={sendChatImage} />
+              <ImagePlus size={24} />
+            </label>
+            <input 
+              value={chatInput} 
+              onChange={e => setChatInput(e.target.value)} 
+              placeholder="Xabar yozing..." 
+              style={{ flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 14px', borderRadius: 20, color: '#fff', fontSize: 14 }}
+              onKeyDown={e => e.key === 'Enter' && sendChatMessage()}
+            />
+            <button onClick={sendChatMessage} style={{ background: 'var(--yt-red)', border: 'none', color: '#fff', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Send size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- PROFIL --- */}
+      {activeNavTab === 'profil' && (
+        <div style={{ padding: 16 }}>
+          {profileData ? (
+            <>
+              <div className="profile-card">
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, margin: '0 auto 12px' }}>
+                  {tgUser?.first_name?.charAt(0) || 'U'}
+                </div>
+                <h3 style={{ margin: '0 0 4px' }}>{tgUser?.first_name || 'Foydalanuvchi'}</h3>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 13 }}>ID: {userId}</p>
+              </div>
+
+              <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 4 }}>Sotuvchi Balansi</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent-gold)' }}>
+                  {Math.floor(profileData.balance).toLocaleString()} UZS
+                </div>
+                <button onClick={() => { setModalStep('withdraw'); setWithdrawAmount(''); openAddModal(); }} style={{ marginTop: 12, width: '100%', padding: '10px', background: 'rgba(46, 204, 113, 0.1)', color: 'var(--success-green)', border: '1px solid rgba(46,204,113,0.3)', borderRadius: 10, fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <Wallet size={16} /> Pul yechish
+                </button>
+              </div>
+
+              <h3 style={{ fontSize: 16, marginBottom: 12 }}>Xarid qilingan kanallar</h3>
+              {profileData.purchases.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Xaridlar yo'q</p>}
+              {profileData.purchases.map((p: any) => (
+                <div key={p.id} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{p.listing?.channelName}</div>
+                  <div style={{ fontSize: 12, color: 'var(--success-green)', marginBottom: 12 }}>{p.amount.toLocaleString()} UZS to'langan</div>
+                  
+                  {p.transferConfirmed ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success-green)', fontSize: 13, fontWeight: 600 }}>
+                      <Check size={16} /> Kanal qabul qilingan
+                    </div>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 12, color: 'var(--text-main)', marginBottom: 8 }}>Kanalni to'liq o'zingizga o'tkazib oldingizmi?</p>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => confirmTransfer(p.id)} style={{ flex: 1, padding: 8, background: 'var(--success-green)', border: 'none', color: '#fff', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>Ha</button>
+                        <button onClick={() => alert("Hali to'liq o'tkazib olmagan bo'lsangiz, Xabarlar bo'limidan elon egasi bilan bog'laning yoki adminga murojaat qiling.")} style={{ flex: 1, padding: 8, background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>Yo'q</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </>
+          ) : (
+             <div style={{ textAlign: 'center', paddingTop: 40 }}><MonitorPlay size={32} style={{ animation: 'pulse 1.5s infinite', opacity: 0.5 }}/></div>
+          )}
+        </div>
+      )}
+
+      {/* --- BOTTOM NAV --- */}
+      <div className="bottom-nav">
+        <div className={`nav-item ${activeNavTab === 'asosiy' ? 'active' : ''}`} onClick={() => setActiveNavTab('asosiy')}>
+          <Home size={22} />
+          <span>Asosiy</span>
+        </div>
+        <div className={`nav-item ${activeNavTab === 'xabarlar' ? 'active' : ''}`} onClick={() => setActiveNavTab('xabarlar')}>
+          <MessageCircle size={22} />
+          <span>Xabarlar</span>
+        </div>
+        <div className={`nav-item ${activeNavTab === 'profil' ? 'active' : ''}`} onClick={() => setActiveNavTab('profil')}>
+          <User size={22} />
+          <span>Profil</span>
+        </div>
       </div>
 
       {showAddModal && (
@@ -791,6 +1005,6 @@ export default function UserApp() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
